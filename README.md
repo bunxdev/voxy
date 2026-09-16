@@ -109,7 +109,7 @@ Resultados y límites: [TESTING.md](TESTING.md).
 - [x] Validar aquí el ciclo completo ARM: arranque, SSH, DNS, APT y apagado.
 - [x] Validar aquí ampliación ARM, integridad QCOW2 y persistencia.
 - [x] Validar aquí el ciclo amd64 con KVM y persistencia.
-- [ ] Construir imagen mínima amd64 equivalente a ARM, con inventario de paquetes.
+- [x] Construir imagen mínima amd64 equivalente a ARM, con inventario de paquetes: [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd). Su integración en el CLI de Voxy sigue pendiente.
 - [ ] Automatizar la construcción limpia de ambas arquitecturas y fijar dependencias.
 - [ ] Medir descarga, disco real, RAM y tiempos; reducir sin romper APT, SSH o red.
 
