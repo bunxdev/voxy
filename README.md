@@ -14,12 +14,38 @@ Windows aún necesita un launcher nativo y pruebas.
 | MacBook Pro Intel i5, macOS 13.6.9 | Debian 12 AMD64 | HVF | Instalación y ciclo completo correctos |
 | Debian 13 Linux x86_64 | Debian 12 AMD64 | KVM | Regresión correcta |
 
-Las dos Macs usan QEMU 11.1.1. El launcher es por terminal; el paquete gráfico
-`.app/.dmg` sigue pendiente. En Ventura fue necesario compilar dependencias y QEMU;
-la instalación inicial tarda bastante más que la de Homebrew en la M1.
-Diagnóstico y recuperación: [guía de instalación macOS](scripts/README.md).
+Las dos Macs usan QEMU 11.1.1. Los paquetes `.dmg` incluyen `Voxy.app`, QEMU,
+sus bibliotecas y Debian 12. La aplicación abre un panel en Terminal.
+También se puede instalar desde el código fuente con Homebrew o MacPorts.
 
-## Instalación en macOS
+## Descargar para Mac
+
+Versión experimental [v0.2.0](https://github.com/bunxdev/voxy/releases/tag/v0.2.0):
+
+| Equipo | Descarga | Versión mínima de macOS |
+| --- | --- | --- |
+| Apple Silicon (ARM64) | [Voxy ARM64.dmg](https://github.com/bunxdev/voxy/releases/download/v0.2.0/Voxy-0.2.0-macos-arm64.dmg) | 15 |
+| Intel (AMD64/x86_64) | [Voxy Intel.dmg](https://github.com/bunxdev/voxy/releases/download/v0.2.0/Voxy-0.2.0-macos-amd64.dmg) | 13 |
+
+1. Descarga el paquete de tu arquitectura y abre el DMG.
+2. Arrastra **Voxy.app** a **Aplicaciones** y ábrela.
+3. En el panel de Terminal elige **Iniciar Debian**, después **Abrir terminal Debian**.
+4. Usa **Apagar Debian** antes de apagar el equipo. Cerrar el panel deja la VM encendida.
+
+No hace falta instalar Homebrew, MacPorts ni QEMU. La imagen inicial de Debian
+está incluida y se verifica con SHA-256 antes de crear el disco. Los datos se guardan
+en `~/Library/Application Support/Voxy/<arquitectura>`; reemplazar la aplicación
+no elimina ese directorio. Requiere acceso al repositorio privado para descargar.
+
+Los paquetes tienen **firma ad-hoc**, sin Developer ID ni notarización de Apple.
+Si macOS bloquea la apertura, sigue el procedimiento por aplicación de
+[Apple: Privacidad y seguridad → Abrir igualmente](https://support.apple.com/es-es/102445).
+No se ha validado todavía una descarga con cuarentena en un Mac sin herramientas
+de desarrollo. Las pruebas realizadas y sus límites están en [TESTING.md](TESTING.md).
+
+Construcción y verificación: [packaging/macos/README.md](packaging/macos/README.md).
+
+## Instalación en macOS desde código fuente
 
 Clonar este repositorio privado usando una cuenta con acceso:
 
@@ -172,7 +198,8 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 - [ ] Implementar y probar Windows x64 y ARM64, verificando aceleración disponible.
 - [x] Crear CLI con estado de VM, SSH, recursos y errores de operaciones.
 - [ ] Crear interfaz gráfica para administrar la VM.
-- [ ] Empaquetar Linux, `.exe`/instalador Windows y `.dmg` macOS.
+- [x] Empaquetar `.dmg` macOS Intel y Apple Silicon.
+- [ ] Empaquetar Linux y `.exe`/instalador Windows.
 - [ ] Revisar distribución/licencias de QEMU y Debian, firmas y notarización.
 - [ ] CI y releases por plataforma, checksums y pruebas desde instalación limpia.
 
@@ -228,17 +255,17 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 ### Apple: macOS Intel y Apple Silicon
 
 - [x] Instalar y verificar QEMU y dependencias nativas en las Macs Intel y M1.
-- [ ] Distribuir QEMU y sus dependencias dentro del paquete de Voxy para evitar compilar en el equipo del usuario.
+- [x] Distribuir QEMU y sus dependencias dentro del paquete de Voxy para evitar compilar en el equipo del usuario.
 - [x] Adaptar la base ARM para HVF con CPU host y máquina virt; probado en M1.
 - [x] Completar validación HVF AMD64 con máquina q35 en Mac Intel.
 - [x] Validar arranque directo del kernel, `fw_cfg`, virtio, red y crecimiento ext4
   bajo HVF en ambas Macs.
-- [ ] Configurar y probar permisos de Hypervisor y firma del ejecutable QEMU
+- [x] Configurar y probar permisos de Hypervisor y firma ad-hoc del ejecutable QEMU
   y sus dependencias dentro del paquete de la aplicación.
 - [x] Guardar datos en `~/Library/Application Support/Voxy`, con claves privadas
   y rutas con espacios probadas en Intel y M1.
 - [ ] Resolver permisos de carpetas compartidas seleccionadas por el usuario.
-- [ ] Crear `.app` y `.dmg` para ambas arquitecturas o un paquete universal probado.
+- [x] Crear `.app` y `.dmg` separados para Intel y Apple Silicon.
 - [ ] Firmar, notarizar y adjuntar el ticket; verificar instalación con Gatekeeper
   desde una descarga nueva en un Mac sin herramientas de desarrollo.
 - [x] Probar Apple Silicon y Mac Intel: primer inicio, SSH, APT, sincronización del kernel, ampliación, persistencia y apagado.
