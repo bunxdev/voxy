@@ -1,0 +1,6 @@
+.cache/
+.runtime/
+*.qcow2
+*.img
+*.iso
+.env

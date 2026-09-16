@@ -1,0 +1,3 @@
+[submodule "upstream/qemu-debian-arm"]
+	path = upstream/qemu-debian-arm
+	url = https://github.com/bunxdev/qemu-debian-arm.git
