@@ -50,10 +50,11 @@ Construcción y verificación: [packaging/macos/README.md](packaging/macos/READM
 
 ## Descargar para Windows x64
 
-[ZIP portátil v0.3.1](https://github.com/bunxdev/voxy/releases/download/v0.3.1/Voxy-0.3.1-windows-x64.zip)
+[ZIP portátil v0.4.0](https://github.com/bunxdev/voxy/releases/download/v0.4.0/Voxy-0.4.0-windows-x64.zip)
 con `Voxy.exe`, QEMU 11.1.0, sus 104 DLL y Debian 12. No necesita Bash ni instalar
 QEMU/OpenSSH. **Probado en Windows 10 Home 22H2 con WHPX**, además de las pruebas previas con Wine + TCG.
-La versión 0.3.1 corrige códigos ANSI visibles y adapta la terminal al tamaño de la ventana.
+La versión 0.4.0 añade puntos de recuperación automáticos cada 10 minutos con
+escrituras y conserva tres copias independientes. Mantiene las correcciones de terminal.
 
 1. Extrae todo el ZIP y abre `Voxy.exe`.
 2. Para WHPX, habilita **Plataforma de hipervisor de Windows** desde
@@ -68,6 +69,16 @@ guardan en `%LOCALAPPDATA%\Voxy\amd64`; las pruebas usan discos separados.
 Cerrar el panel deja Debian encendido; apágalo desde el menú.
 
 [Instrucciones, construcción y límites](packaging/windows/README.md).
+
+### Recuperación en Windows
+
+Después de actualizar desde 0.3.x, cierra los paneles antiguos y apaga/inicia Debian
+con la versión nueva. Las copias siguen funcionando al cerrar el panel o desconectar
+SSH. El menú permite crear, listar y restaurar puntos con Debian apagado; conserva
+el disco anterior al restaurar. Son copias locales de disco, sin RAM.
+
+[Cómo funciona, espacio necesario y límites](docs/RECOVERY.md). macOS/Linux aún no
+incorporan estas copias automáticas.
 
 ## Instalación en macOS desde código fuente
 
@@ -209,9 +220,11 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 - [x] Seleccionar KVM/HVF/TCG en el launcher macOS/Linux; probar KVM AMD64 y HVF AMD64/ARM64.
 - [x] Validar WHPX en Windows 10 x64.
 - [ ] Validar KVM en ARM64 nativo.
-- [ ] Añadir control QMP y manejo robusto de fallos, procesos y puertos ocupados.
+- [x] Añadir QMP local Windows, bloqueo liberado al morir y procesos independientes de la sesión SSH.
+- [ ] Extender QMP a macOS/Linux y completar manejo de puertos ocupados y otros fallos.
 - [ ] Añadir configuración persistente de CPU, RAM, discos y puertos.
-- [ ] Implementar backup/restauración, importación y actualización con recuperación.
+- [x] Implementar copias automáticas, retención y restauración reanudable en Windows x64.
+- [ ] Extender la recuperación a macOS/Linux, importación y actualización con recuperación.
 - [ ] Diseñar separación del sistema base y los datos de usuario.
 - [ ] Resolver carpetas compartidas, permisos, reloj y suspensión del anfitrión.
 
@@ -320,6 +333,9 @@ que distribuyamos, no solo contra la documentación de desarrollo.
   y tamaño, manteniendo las funciones de la configuración de Voxy.
 - [ ] Probar Windows Firewall, Defender, VPN y coexistencia con WSL2/Hyper-V;
   mantener SSH/API/CDP en loopback salvo configuración explícita del usuario.
+- [x] Copias independientes cada 10 minutos con escrituras, retención de tres puntos y restauración con diario en Windows.
+- [x] Probar cierre brusco de QEMU, interrupción de copia y desconexión SSH en una VM separada.
+- [ ] Probar corte eléctrico real, suspensión/reanudación y recuperación en más equipos.
 - [ ] Crear instalador `.exe` o `.msi`, firma de código, actualización y desinstalación
   con opción clara para conservar o borrar los discos del usuario.
 - [ ] Probar x64 y ARM64 reales desde Windows limpio: primer arranque, SSH, APT,

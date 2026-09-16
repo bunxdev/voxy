@@ -15,6 +15,7 @@ func (a *app) testVM() (err error) {
 		return err
 	}
 	test := *a
+	test.noAutoBackup = true
 	test.state = filepath.Join(dir, "Debian con espacios")
 	if err = test.secureState(); err != nil {
 		return err
