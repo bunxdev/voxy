@@ -8,6 +8,17 @@ En macOS usa HVF, en Linux KVM cuando está disponible y TCG como alternativa
 explícita. Las pruebas reales y sus límites están en [TESTING.md](TESTING.md).
 Windows aún necesita un launcher nativo y pruebas.
 
+| Anfitrión probado | Invitado | Aceleración | Resultado |
+| --- | --- | --- | --- |
+| Mac mini M1, macOS 15.5 | Debian 12 ARM64 | HVF | Instalación y ciclo completo correctos |
+| MacBook Pro Intel i5, macOS 13.6.9 | Debian 12 AMD64 | HVF | Instalación y ciclo completo correctos |
+| Debian 13 Linux x86_64 | Debian 12 AMD64 | KVM | Regresión correcta |
+
+Las dos Macs usan QEMU 11.1.1. El launcher es por terminal; el paquete gráfico
+`.app/.dmg` sigue pendiente. En Ventura fue necesario compilar dependencias y QEMU;
+la instalación inicial tarda bastante más que la de Homebrew en la M1.
+Diagnóstico y recuperación: [guía de instalación macOS](scripts/README.md).
+
 ## Instalación en macOS
 
 Clonar este repositorio privado usando una cuenta con acceso:
@@ -145,7 +156,7 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 ### 2. Administración de la VM
 
 - [x] Unificar las bases mínimas ARM64/AMD64 en un CLI con selección de arquitectura.
-- [x] Seleccionar KVM/HVF/TCG en el launcher macOS/Linux; probar KVM amd64 y HVF ARM64.
+- [x] Seleccionar KVM/HVF/TCG en el launcher macOS/Linux; probar KVM AMD64 y HVF AMD64/ARM64.
 - [ ] Validar WHPX en Windows y KVM en ARM64 nativo.
 - [ ] Añadir control QMP y manejo robusto de fallos, procesos y puertos ocupados.
 - [ ] Añadir configuración persistente de CPU, RAM, discos y puertos.
@@ -157,7 +168,7 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 
 - [ ] Probar Linux x86_64 y ARM64 en hardware nativo.
 - [x] Implementar y probar Apple Silicon con HVF.
-- [ ] Completar la prueba macOS Intel con HVF.
+- [x] Completar la prueba macOS Intel con HVF.
 - [ ] Implementar y probar Windows x64 y ARM64, verificando aceleración disponible.
 - [x] Crear CLI con estado de VM, SSH, recursos y errores de operaciones.
 - [ ] Crear interfaz gráfica para administrar la VM.
@@ -216,21 +227,22 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 
 ### Apple: macOS Intel y Apple Silicon
 
-- [ ] Preparar binarios QEMU y dependencias para `x86_64` y `arm64`.
+- [x] Instalar y verificar QEMU y dependencias nativas en las Macs Intel y M1.
+- [ ] Distribuir QEMU y sus dependencias dentro del paquete de Voxy para evitar compilar en el equipo del usuario.
 - [x] Adaptar la base ARM para HVF con CPU host y máquina virt; probado en M1.
-- [ ] Completar validación HVF AMD64 con máquina q35 en Mac Intel.
-- [ ] Validar arranque directo del kernel, `fw_cfg`, virtio, red y crecimiento ext4
-  bajo HVF; no asumir que la configuración TCG funciona sin cambios.
+- [x] Completar validación HVF AMD64 con máquina q35 en Mac Intel.
+- [x] Validar arranque directo del kernel, `fw_cfg`, virtio, red y crecimiento ext4
+  bajo HVF en ambas Macs.
 - [ ] Configurar y probar permisos de Hypervisor y firma del ejecutable QEMU
   y sus dependencias dentro del paquete de la aplicación.
 - [x] Guardar datos en `~/Library/Application Support/Voxy`, con claves privadas
-  y rutas con espacios probadas en M1.
+  y rutas con espacios probadas en Intel y M1.
 - [ ] Resolver permisos de carpetas compartidas seleccionadas por el usuario.
 - [ ] Crear `.app` y `.dmg` para ambas arquitecturas o un paquete universal probado.
 - [ ] Firmar, notarizar y adjuntar el ticket; verificar instalación con Gatekeeper
   desde una descarga nueva en un Mac sin herramientas de desarrollo.
-- [ ] Probar Apple Silicon y Mac Intel reales: primer inicio, SSH, APT, persistencia,
-  backup/restauración, actualización, suspensión y desinstalación conservando datos.
+- [x] Probar Apple Silicon y Mac Intel: primer inicio, SSH, APT, sincronización del kernel, ampliación, persistencia y apagado.
+- [ ] Probar backup/restauración, actualización, suspensión y desinstalación conservando datos en ambas Macs.
 
 ### Windows x64 y ARM64
 
@@ -252,7 +264,7 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 
 ### Criterio para declarar soporte
 
-- [ ] Publicar matriz de versiones de SO, CPU, QEMU y acelerador realmente probados.
+- [x] Publicar matriz de versiones de SO, CPU, QEMU y acelerador realmente probados.
 - [ ] Automatizar pruebas por plataforma y archivar resultados de hardware real
   cuando la CI no tenga virtualización disponible.
 - [ ] Con QEMU + Debian estable, repetir la matriz incorporando Docker y todas
