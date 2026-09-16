@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+UPSTREAM="$ROOT/upstream/qemu-debian-arm"
+VM="$ROOT/.runtime/arm64"
+export VM_SSH_PORT=${VM_SSH_PORT:-22223}
+export VM_HTTP_PORT=${VM_HTTP_PORT:-28080}
+case "${1:-help}" in
+  init) "$UPSTREAM/download-vm.sh" "$VM";;
+  start|stop|ssh) action=$1; shift; exec "$VM/$action.sh" "$@";;
+  resize) shift; exec "$VM/resize-disk.sh" "$@";;
+  sync-kernel) exec "$VM/sync-kernel.sh";;
+  test) exec "$UPSTREAM/run-tests.sh" "$VM";;
+  *) echo 'Uso: ./voxy-arm {init|start|stop|ssh [comando]|resize TAMAÑO|sync-kernel|test}';;
+esac
