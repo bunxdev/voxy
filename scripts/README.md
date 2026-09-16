@@ -68,3 +68,13 @@ Para usuarios finales están disponibles los paquetes en
 Para generar y comprobar esos paquetes desde macOS, consulta
 [packaging/macos/README.md](../packaging/macos/README.md) y los scripts
 `build-dmg.sh` / `test-dmg.sh`.
+
+## Windows x64 y Wine
+
+- `build-windows.sh`: compilación cruzada del launcher Go, QEMU/DLL con hashes
+  fijados, imagen Debian y ZIP portátil.
+- `test-wine.sh /ruta/al/ZIP`: extracción, verificación de manifiesto y ciclo
+  completo usando un prefijo Wine x64 aislado y TCG. Requiere Wine y Xvfb si no hay DISPLAY.
+
+Consulta [la guía Windows](../packaging/windows/README.md). Las pruebas con Wine
+no sustituyen la validación WHPX, permisos y seguridad en Windows real.

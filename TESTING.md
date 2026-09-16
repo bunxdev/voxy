@@ -182,3 +182,59 @@ Artefactos finales:
 | --- | ---: | --- |
 | `Voxy-0.2.0-macos-arm64.dmg` | 119870094 | `1251c03c2ff9490599e5ff849cfee3a849c430f3dd1f6284c18370e0dad08bf5` |
 | `Voxy-0.2.0-macos-amd64.dmg` | 124678059 | `0d5d53dfba81c07fac21efbf0643eb14a1d35e5ed1a247f7f5d8e08dda67dd06` |
+
+## Windows x64 v0.3.0 — validación preliminar con Wine
+
+Entorno: Debian 13 x86_64, Wine 10.0 (paquete Debian `10.0~repack-6`), Xvfb,
+Go 1.27.1 y Bun 1.4.2. Se ejecutaron **binarios Windows PE x64**; no se sustituyó
+QEMU por el binario Linux. El paquete incluye QEMU 11.1.0 del instalador
+`qemu-w64-setup-20260811.exe` de Stefan Weil, verificado con el SHA-512 fijado,
+`qemu-img` y 104 DLL transitivas. Invitado Debian 12 AMD64 v0.1.0, 512 MiB y 1 CPU.
+
+### Resultados
+
+- Compilación cruzada Go y `GOOS=windows GOARCH=amd64 go vet ./...`: correctas.
+- Cinco pruebas unitarias compiladas para Windows y ejecutadas en Wine: correctas.
+  Cubren tamaños/overflow, discos existentes, imagen corrupta/reintento de init,
+  PID reutilizado y verificación del par kernel/initramfs antes de reemplazarlo.
+- `doctor`: cargan QEMU y `qemu-img` con las DLL incluidas. El binario informa
+  aceleradores `tcg` y `whpx`; WHPX no está disponible en Wine.
+- Ciclo integral con TCG: primer arranque, SSH integrado, DNS y APT, Debian 12 x64,
+  ausencia de Docker y servicios fallidos, preparación/sincronización del kernel,
+  rechazo de resize encendido, apagado, comprobación qcow2, ampliación de 1 a 2 GiB,
+  rechazo de reducción, segundo arranque distinto y persistencia: correcto.
+- Después del segundo arranque: sistema de archivos de 2.0 GiB, 276 MiB usados;
+  invitado alrededor de 50 MiB RAM usada (no equivale al RSS de QEMU anfitrión).
+- Procesos separados `start`, cierre del menú y `status`: QEMU continúa activo.
+- Terminal SSH interactiva: recibe comandos y sale correctamente con `exit`.
+- Rutas del programa y de datos con espacios y `ñ`: arranque y SSH correctos.
+- WHPX solicitado explícitamente en Wine falla con diagnóstico; no se oculta
+  cambiando a TCG. Los datos normales y los discos de prueba quedan separados.
+- El ZIP final se extrae y se valida contra su manifiesto SHA-256 antes de probarlo
+  con `scripts/test-wine.sh`, en un prefijo Wine dedicado y rutas con `ñ`.
+
+### Correcciones obtenidas de las pruebas
+
+1. QEMU mantiene abierto `initramfs` en Windows; reemplazarlo con la VM activa
+   devolvía `Access denied`. Ahora `sync-kernel` deja ambos archivos preparados y
+   con hashes; se aplican con QEMU apagado. Los archivos originales de la
+   actualización se conservan hasta completar los dos reemplazos, permitiendo reintentar.
+2. QEMU no podía abrir rutas absolutas con `ñ`. El launcher establece el directorio
+   de trabajo usando las API Unicode de Windows y entrega nombres relativos ASCII
+   a QEMU y `qemu-img`. El pequeño firmware PC se copia al directorio de datos.
+
+### Límites
+
+**No se ha probado en Windows real.** WHPX, permisos efectivos de usuario estándar,
+ACL de claves, SmartScreen, Defender, Firewall, VPN, WSL2/Hyper-V, suspensión y
+actualización siguen pendientes. Las pruebas Wine no certifican esos comportamientos.
+No hay firma Authenticode de Voxy, instalador MSI/NSIS ni Windows ARM64. Tampoco
+se han incorporado Docker ni Lupa al invitado. Las DLL opcionales de interfaces
+multimedia/gráficas ajenas al uso headless de Voxy no están validadas.
+
+El paquete es portátil. Para la prueba real, `Probar-Windows.cmd` usa WHPX y
+`Probar-TCG.cmd` usa emulación por software. Ambos guardan un log compartible en
+`%LOCALAPPDATA%\Voxy` y conservan sus discos de prueba para diagnóstico.
+
+Artefacto Windows final: `Voxy-0.3.0-windows-x64.zip`, **157636969 bytes**.
+SHA-256: `e972bbd929c36a8f9a1d801f603ee9c7a90d5d24564d7c998b43e6fd3970af76`.

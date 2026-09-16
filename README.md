@@ -6,13 +6,15 @@ aplicaciones Linux. **La etapa actual no instala Docker ni Lupa en la VM.**
 El launcher selecciona AMD64 para Intel/AMD y ARM64 para Apple Silicon/ARM.
 En macOS usa HVF, en Linux KVM cuando está disponible y TCG como alternativa
 explícita. Las pruebas reales y sus límites están en [TESTING.md](TESTING.md).
-Windows aún necesita un launcher nativo y pruebas.
+Windows x64 tiene un launcher nativo experimental y un ZIP portátil para pruebas;
+la validación en Windows real y con WHPX sigue pendiente.
 
 | Anfitrión probado | Invitado | Aceleración | Resultado |
 | --- | --- | --- | --- |
 | Mac mini M1, macOS 15.5 | Debian 12 ARM64 | HVF | Instalación y ciclo completo correctos |
 | MacBook Pro Intel i5, macOS 13.6.9 | Debian 12 AMD64 | HVF | Instalación y ciclo completo correctos |
 | Debian 13 Linux x86_64 | Debian 12 AMD64 | KVM | Regresión correcta |
+| Ejecutables Windows x64 bajo Wine 10, Debian 13 | Debian 12 AMD64 | TCG | Pruebas preliminares; Windows real pendiente |
 
 Las dos Macs usan QEMU 11.1.1. Los paquetes `.dmg` incluyen `Voxy.app`, QEMU,
 sus bibliotecas y Debian 12. La aplicación abre un panel en Terminal.
@@ -35,7 +37,7 @@ Versión experimental [v0.2.0](https://github.com/bunxdev/voxy/releases/tag/v0.2
 No hace falta instalar Homebrew, MacPorts ni QEMU. La imagen inicial de Debian
 está incluida y se verifica con SHA-256 antes de crear el disco. Los datos se guardan
 en `~/Library/Application Support/Voxy/<arquitectura>`; reemplazar la aplicación
-no elimina ese directorio. Requiere acceso al repositorio privado para descargar.
+no elimina ese directorio. El repositorio y las descargas son públicos.
 
 Los paquetes tienen **firma ad-hoc**, sin Developer ID ni notarización de Apple.
 Si macOS bloquea la apertura, sigue el procedimiento por aplicación de
@@ -45,9 +47,29 @@ de desarrollo. Las pruebas realizadas y sus límites están en [TESTING.md](TEST
 
 Construcción y verificación: [packaging/macos/README.md](packaging/macos/README.md).
 
+## Descargar para Windows x64
+
+[ZIP portátil v0.3.0](https://github.com/bunxdev/voxy/releases/download/v0.3.0/Voxy-0.3.0-windows-x64.zip)
+con `Voxy.exe`, QEMU 11.1.0, sus 104 DLL y Debian 12. No necesita Bash ni instalar
+QEMU/OpenSSH. **Pruebas preliminares con Wine + TCG; Windows real aún pendiente.**
+
+1. Extrae todo el ZIP y abre `Voxy.exe`.
+2. Para WHPX, habilita **Plataforma de hipervisor de Windows** desde
+   `optionalfeatures.exe` y reinicia si se solicita.
+3. Para probar emulación por software, abre `Voxy-TCG.cmd`.
+4. Ejecuta `Probar-Windows.cmd` (WHPX) o `Probar-TCG.cmd` y comparte el registro
+   que se guarda en `%LOCALAPPDATA%\Voxy\prueba-whpx.log` o `prueba-tcg.log`.
+
+Objetivo: Windows 10 2004+ / Windows 11 **x64**. ARM64 no está incluido. El ZIP
+no tiene firma Authenticode de Voxy ni instalador MSI. Los datos habituales se
+guardan en `%LOCALAPPDATA%\Voxy\amd64`; las pruebas usan discos separados.
+Cerrar el panel deja Debian encendido; apágalo desde el menú.
+
+[Instrucciones, construcción y límites](packaging/windows/README.md).
+
 ## Instalación en macOS desde código fuente
 
-Clonar este repositorio privado usando una cuenta con acceso:
+Clonar el repositorio:
 
 ```bash
 git clone https://github.com/bunxdev/voxy.git
@@ -273,15 +295,21 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 
 ### Windows x64 y ARM64
 
-- [ ] Preparar QEMU y todas sus DLL para cada arquitectura de Windows soportada.
-- [ ] Detectar virtualización del procesador y disponibilidad de Windows Hypervisor
-  Platform; explicar cómo habilitarla y si requiere reiniciar, antes de iniciar la VM.
-- [ ] Implementar y probar WHPX en x64; comprobar por separado soporte ARM64
-  de la versión/build distribuida y del dispositivo real. TCG será una opción explícita.
-- [ ] Adaptar argumentos, rutas, pipes/canales de control, manejo de procesos y
-  archivos bloqueados; los scripts `.sh` actuales no son un launcher Windows nativo.
-- [ ] Guardar discos/configuración en `%LOCALAPPDATA%\Voxy`, aplicar ACL a claves
-  y probar ejecución sin administrador después de instalar los prerrequisitos.
+- [x] Preparar QEMU x64, `qemu-img` y DLL transitivas, con versiones y hashes fijados.
+- [x] Crear `Voxy.exe` nativo con SSH integrado, sin dependencia de Bash/OpenSSH.
+- [x] Implementar diagnóstico WHPX y selección explícita de TCG; mostrar cómo
+  habilitar la característica de Windows y reiniciar.
+- [x] Adaptar argumentos, rutas con espacios, PID/tiempo de creación, procesos
+  independientes de la consola y actualización del kernel tras liberar archivos.
+- [x] Guardar discos/configuración en `%LOCALAPPDATA%\Voxy` y configurar ACL privadas.
+- [x] Crear ZIP portátil x64 y scripts para que el usuario ejecute pruebas separadas.
+- [x] Probar el ciclo completo del ejecutable Windows con Wine + TCG, incluyendo
+  rutas con espacios/acentos y tratamiento de archivos bloqueados.
+- [ ] Validar WHPX, detección de virtualización, ACL y ejecución como usuario
+  estándar en Windows real después de instalar los prerrequisitos.
+- [ ] Preparar paquete Windows ARM64 y comprobar aceleración/build en hardware real.
+- [ ] Evaluar una compilación QEMU Windows sin interfaces gráficas para reducir DLL
+  y tamaño, manteniendo las funciones de la configuración de Voxy.
 - [ ] Probar Windows Firewall, Defender, VPN y coexistencia con WSL2/Hyper-V;
   mantener SSH/API/CDP en loopback salvo configuración explícita del usuario.
 - [ ] Crear instalador `.exe` o `.msi`, firma de código, actualización y desinstalación
