@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.3.0"
+const version = "0.3.1"
 
 type app struct {
 	root, state, accel string
@@ -613,6 +613,11 @@ func (a *app) applyKernelUpdate() error {
 	return nil
 }
 func (a *app) shell() error {
+	restoreOutput, e := enableVirtualTerminal(os.Stdout, os.Stderr)
+	if e != nil {
+		return e
+	}
+	defer restoreOutput()
 	c, e := a.client()
 	if e != nil {
 		return e
@@ -624,11 +629,11 @@ func (a *app) shell() error {
 	}
 	defer s.Close()
 	w, h := 80, 24
+	if tw, th, err := terminalSize(); err == nil && tw > 0 && th > 0 {
+		w, h = tw, th
+	}
 	fd := int(os.Stdin.Fd())
 	if term.IsTerminal(fd) {
-		if tw, th, err := term.GetSize(fd); err == nil {
-			w, h = tw, th
-		}
 		old, err := term.MakeRaw(fd)
 		if err != nil {
 			return err
@@ -644,6 +649,9 @@ func (a *app) shell() error {
 	if e = s.Shell(); e != nil {
 		return e
 	}
+	done := make(chan struct{})
+	defer close(done)
+	go watchTerminalSize(done, s.WindowChange, w, h)
 	return s.Wait()
 }
 func (a *app) status() error {

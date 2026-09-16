@@ -7,14 +7,15 @@ El launcher selecciona AMD64 para Intel/AMD y ARM64 para Apple Silicon/ARM.
 En macOS usa HVF, en Linux KVM cuando está disponible y TCG como alternativa
 explícita. Las pruebas reales y sus límites están en [TESTING.md](TESTING.md).
 Windows x64 tiene un launcher nativo experimental y un ZIP portátil para pruebas;
-la validación en Windows real y con WHPX sigue pendiente.
+validado en Windows 10 Home 22H2 x64 con WHPX. Windows 11 y ARM64 siguen pendientes.
 
 | Anfitrión probado | Invitado | Aceleración | Resultado |
 | --- | --- | --- | --- |
 | Mac mini M1, macOS 15.5 | Debian 12 ARM64 | HVF | Instalación y ciclo completo correctos |
 | MacBook Pro Intel i5, macOS 13.6.9 | Debian 12 AMD64 | HVF | Instalación y ciclo completo correctos |
 | Debian 13 Linux x86_64 | Debian 12 AMD64 | KVM | Regresión correcta |
-| Ejecutables Windows x64 bajo Wine 10, Debian 13 | Debian 12 AMD64 | TCG | Pruebas preliminares; Windows real pendiente |
+| Windows 10 Home 22H2, build 19045, x64 | Debian 12 AMD64 | WHPX | Ciclo completo y terminal correctos |
+| Ejecutables Windows x64 bajo Wine 10, Debian 13 | Debian 12 AMD64 | TCG | Ciclo completo correcto bajo Wine |
 
 Las dos Macs usan QEMU 11.1.1. Los paquetes `.dmg` incluyen `Voxy.app`, QEMU,
 sus bibliotecas y Debian 12. La aplicación abre un panel en Terminal.
@@ -49,9 +50,10 @@ Construcción y verificación: [packaging/macos/README.md](packaging/macos/READM
 
 ## Descargar para Windows x64
 
-[ZIP portátil v0.3.0](https://github.com/bunxdev/voxy/releases/download/v0.3.0/Voxy-0.3.0-windows-x64.zip)
+[ZIP portátil v0.3.1](https://github.com/bunxdev/voxy/releases/download/v0.3.1/Voxy-0.3.1-windows-x64.zip)
 con `Voxy.exe`, QEMU 11.1.0, sus 104 DLL y Debian 12. No necesita Bash ni instalar
-QEMU/OpenSSH. **Pruebas preliminares con Wine + TCG; Windows real aún pendiente.**
+QEMU/OpenSSH. **Probado en Windows 10 Home 22H2 con WHPX**, además de las pruebas previas con Wine + TCG.
+La versión 0.3.1 corrige códigos ANSI visibles y adapta la terminal al tamaño de la ventana.
 
 1. Extrae todo el ZIP y abre `Voxy.exe`.
 2. Para WHPX, habilita **Plataforma de hipervisor de Windows** desde
@@ -205,7 +207,8 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 
 - [x] Unificar las bases mínimas ARM64/AMD64 en un CLI con selección de arquitectura.
 - [x] Seleccionar KVM/HVF/TCG en el launcher macOS/Linux; probar KVM AMD64 y HVF AMD64/ARM64.
-- [ ] Validar WHPX en Windows y KVM en ARM64 nativo.
+- [x] Validar WHPX en Windows 10 x64.
+- [ ] Validar KVM en ARM64 nativo.
 - [ ] Añadir control QMP y manejo robusto de fallos, procesos y puertos ocupados.
 - [ ] Añadir configuración persistente de CPU, RAM, discos y puertos.
 - [ ] Implementar backup/restauración, importación y actualización con recuperación.
@@ -217,11 +220,13 @@ seguir usándose. El nuevo CLI utiliza directorios distintos.
 - [ ] Probar Linux x86_64 y ARM64 en hardware nativo.
 - [x] Implementar y probar Apple Silicon con HVF.
 - [x] Completar la prueba macOS Intel con HVF.
-- [ ] Implementar y probar Windows x64 y ARM64, verificando aceleración disponible.
+- [x] Implementar y probar Windows 10 x64 con WHPX.
+- [ ] Implementar y probar Windows ARM64 y ampliar la matriz a Windows 11.
 - [x] Crear CLI con estado de VM, SSH, recursos y errores de operaciones.
 - [ ] Crear interfaz gráfica para administrar la VM.
 - [x] Empaquetar `.dmg` macOS Intel y Apple Silicon.
-- [ ] Empaquetar Linux y `.exe`/instalador Windows.
+- [x] Empaquetar Windows x64 con `Voxy.exe` en ZIP portátil.
+- [ ] Empaquetar Linux y crear instalador Windows.
 - [ ] Revisar distribución/licencias de QEMU y Debian, firmas y notarización.
 - [ ] CI y releases por plataforma, checksums y pruebas desde instalación limpia.
 
@@ -305,8 +310,11 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 - [x] Crear ZIP portátil x64 y scripts para que el usuario ejecute pruebas separadas.
 - [x] Probar el ciclo completo del ejecutable Windows con Wine + TCG, incluyendo
   rutas con espacios/acentos y tratamiento de archivos bloqueados.
-- [ ] Validar WHPX, detección de virtualización, ACL y ejecución como usuario
-  estándar en Windows real después de instalar los prerrequisitos.
+- [x] Validar WHPX y ciclo completo en Windows 10 Home 22H2 x64.
+- [x] Comprobar ACL de datos/claves (usuario y SYSTEM), SSH en loopback y operación con Defender activo.
+- [x] Corregir y probar ANSI, pegado, flechas, Ctrl+C y cambio de tamaño de terminal en Windows real.
+- [ ] Repetir el ciclo WHPX completo como usuario estándar: la prueba remota usó elevación; se observó la VM TCG habitual sin elevación.
+- [ ] Validar Windows 11 y otras versiones del anfitrión.
 - [ ] Preparar paquete Windows ARM64 y comprobar aceleración/build en hardware real.
 - [ ] Evaluar una compilación QEMU Windows sin interfaces gráficas para reducir DLL
   y tamaño, manteniendo las funciones de la configuración de Voxy.

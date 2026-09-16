@@ -1,17 +1,17 @@
-# Windows x64: paquete portátil y pruebas preliminares
+# Windows x64: paquete portátil y pruebas nativas
 
-La primera entrega es un **ZIP portátil**, con `Voxy.exe`, QEMU, sus DLL y Debian
+La entrega actual es un **ZIP portátil**, con `Voxy.exe`, QEMU, sus DLL y Debian
 12. No es un instalador MSI/NSIS. El lanzador está escrito en Go y usa las API de
 Windows para procesos, permisos y detección de WHPX. El cliente SSH está integrado;
 no necesita Bash, PowerShell para operar ni OpenSSH instalado.
 
-**Objetivo:** Windows 10 2004+ / Windows 11 x64. La validación inicial se hace con
-Wine 10 en Debian Linux y TCG; no constituye una prueba de Windows real ni de WHPX.
+**Objetivo:** Windows 10 2004+ / Windows 11 x64. La versión 0.3.1 está probada en Windows 10 Home 22H2, build 19045, con WHPX.
+La versión anterior también pasó pruebas con Wine 10 y TCG. Windows 11 sigue pendiente.
 Windows ARM64 queda fuera de esta entrega.
 
 ## Probar en Windows
 
-1. Descarga y extrae **todo** `Voxy-0.3.0-windows-x64.zip` en una carpeta local.
+1. Descarga y extrae **todo** `Voxy-0.3.1-windows-x64.zip` en una carpeta local.
 2. Abre `Voxy.exe`. El menú permite iniciar, entrar a Debian por SSH y apagar.
 3. Para aceleración de hardware, habilita **Plataforma de hipervisor de Windows**
    desde `optionalfeatures.exe` y reinicia si Windows lo solicita. También requiere
@@ -27,14 +27,16 @@ Los registros están en `%LOCALAPPDATA%\Voxy\prueba-whpx.log` o `prueba-tcg.log`
 Los discos de prueba se conservan para diagnóstico; su ruta aparece en el registro.
 
 Los binarios no tienen firma Authenticode de Voxy. SmartScreen puede mostrar una
-advertencia. Falta validar instalación y permisos en un Windows limpio, Defender,
-Firewall, coexistencia con WSL2/Hyper-V, suspensión y recuperación.
+advertencia. El equipo probado tenía Defender activo y Tailscale; esto no sustituye
+una matriz de Firewall, VPN y coexistencia con WSL2/Hyper-V. Faltan instalación limpia,
+ciclo WHPX completo sin elevación, suspensión y recuperación.
 
 ## Datos y uso por terminal
 
 Datos habituales: `%LOCALAPPDATA%\Voxy\amd64`. El lanzador configura una DACL
 protegida con acceso al usuario actual y SYSTEM, heredable por los archivos nuevos.
-La efectividad de esas ACL debe comprobarse en Windows real; Wine no la certifica.
+En el Windows probado se verificaron esas entradas en el directorio y la clave privada.
+La VM TCG habitual corría sin elevación; la prueba integral WHPX usó SSH elevado.
 No copies claves privadas a reportes ni issues. Los logs de prueba no contienen claves.
 
 ```powershell
@@ -65,6 +67,15 @@ initramfs usado por QEMU. Los archivos `.next` y su manifiesto se conservan hast
 completar la sustitución; `stop` o el siguiente `start` aplican la actualización
 pendiente con la VM apagada. No borres esos archivos para reparar una actualización
 sin revisar primero el error. No se incluye apagado forzado automático.
+
+## Terminal interactiva en 0.3.1
+
+El cliente activa la interpretación ANSI en las salidas de consola de Windows y
+restaura el modo original al salir. Conserva el protocolo de pegado delimitado
+(*bracketed paste*); secuencias como `?2004h` no deben aparecer como texto visible.
+Lee el tamaño real de la consola y comunica los cambios de ventana al invitado.
+Se probaron colores, historial con flechas, pegado, Ctrl+C y cambio de 100×30 a 120×40.
+Al reemplazar el ejecutable, cierra y vuelve a abrir el panel para cargar la versión nueva.
 
 ## Construir desde Linux
 
@@ -106,6 +117,9 @@ wine ../.cache/windows/unit-tests.exe -test.v
 Las pruebas unitarias cubren tamaños inválidos/overflow, protección de discos
 existentes, rechazo de imagen corrupta, recuperación de inicialización interrumpida,
 PID reutilizado y validación de ambos archivos antes de aplicar un kernel nuevo.
+Dos pruebas adicionales verifican que las tuberías conservan los bytes y que una
+consola Windows real interpreta los códigos ANSI y restaura su modo; las siete
+pruebas pasaron en Windows 10.
 La prueba integral se ejecuta con el mismo `Voxy.exe` distribuido, mediante `test`.
 
 Referencias: [QEMU Windows](https://qemu.weilnetz.de/w64/),

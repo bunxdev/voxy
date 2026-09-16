@@ -2,13 +2,16 @@
 # Cross-build on Linux. Wine is used separately for smoke/integration tests.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+VERSION=$(sed -n 's/^const version = "\([^"]*\)"/\1/p' "$ROOT/windows/main_windows.go")
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid Windows launcher version'; exit 1; }
+ZIP_NAME="Voxy-$VERSION-windows-x64.zip"
 source "$ROOT/packaging/windows/qemu.lock"
 source "$ROOT/images/amd64.lock"
 CACHE="$ROOT/.cache/windows-builder"
 BUILD="$ROOT/dist/windows-build"
 APP="$BUILD/Voxy"
 [[ ! -e "$BUILD" ]] || { echo "Move the previous build first: $BUILD"; exit 1; }
-[[ ! -e "$ROOT/dist/Voxy-0.3.0-windows-x64.zip" ]] || { echo 'Move the previous Windows ZIP first'; exit 1; }
+[[ ! -e "$ROOT/dist/$ZIP_NAME" ]] || { echo 'Move the previous Windows ZIP first'; exit 1; }
 mkdir -p "$CACHE" "$APP/qemu/share" "$APP/image" "$APP/licenses"
 fetch() { [[ -f "$2" ]] || curl -fL --retry 3 "$1" -o "$2"; }
 fetch "$QEMU_URL" "$CACHE/qemu-setup.exe"
@@ -51,5 +54,5 @@ Go dependencies and versions: go-modules.txt
 Windows system DLLs and Wine DLLs are NOT redistributed.
 SOURCES
 (cd "$APP" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum) > "$APP/SHA256SUMS"
-(cd "$BUILD" && zip -q -r "$ROOT/dist/Voxy-0.3.0-windows-x64.zip" Voxy)
-sha256sum "$ROOT/dist/Voxy-0.3.0-windows-x64.zip"
+(cd "$BUILD" && zip -q -r "$ROOT/dist/$ZIP_NAME" Voxy)
+sha256sum "$ROOT/dist/$ZIP_NAME"
