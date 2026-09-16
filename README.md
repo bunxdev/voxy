@@ -106,8 +106,8 @@ Resultados y límites: [TESTING.md](TESTING.md).
 - [x] Preparar referencia Debian 13 amd64 oficial con SHA512.
 - [x] Añadir comandos de descarga, arranque, SSH y apagado.
 - [x] Guardar discos y claves fuera de Git; publicar puertos en localhost.
-- [ ] Validar aquí el ciclo completo ARM: arranque, SSH, DNS, APT y apagado.
-- [ ] Validar aquí ampliación ARM, integridad QCOW2 y persistencia.
+- [x] Validar aquí el ciclo completo ARM: arranque, SSH, DNS, APT y apagado.
+- [x] Validar aquí ampliación ARM, integridad QCOW2 y persistencia.
 - [x] Validar aquí el ciclo amd64 con KVM y persistencia.
 - [ ] Construir imagen mínima amd64 equivalente a ARM, con inventario de paquetes.
 - [ ] Automatizar la construcción limpia de ambas arquitecturas y fijar dependencias.

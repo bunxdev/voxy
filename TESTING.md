@@ -34,7 +34,22 @@ Release v0.1.1, SHA256:
 64438786232688a0b68faf83f2f8014b57688c68759505fc63d8641cbdf44375
 ```
 
-Descarga verificada. Resultado del ciclo completo pendiente de incorporar.
+`./voxy-arm test` terminó con **ALL TESTS PASSED**, código **0**.
+
+- Debian 12 ARM64 sin Docker; SSH, DNS y actualización de índices APT correctos.
+- Kernel e initramfs sincronizados con hashes idénticos.
+- Ampliación con VM encendida y reducción del disco rechazadas.
+- Apagado, integridad QCOW2 y ampliación de 1 a 2 GiB correctos.
+- Segundo arranque, crecimiento de ext4 y persistencia del archivo comprobados.
+- SSH, preparación y red activos; ninguna unidad systemd fallida.
+- 512 MiB configurados; el invitado reportó 478 MiB totales, **43 MiB usados**
+  y 435 MiB disponibles en la medición final.
+- Sistema de archivos final: 2 GiB, **272 MiB usados**, 1,7 GiB disponibles.
+- Se solicitó el apagado al terminar para liberar recursos.
+
+Registro completo local: `.runtime/arm64/test-logs.FjNwYw/results.log`.
+El registro no se versiona; estos resultados resumen esta ejecución concreta.
+Los consumos medidos son del invitado y no equivalen al RSS del proceso QEMU.
 
 ## Límites
 
