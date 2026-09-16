@@ -225,7 +225,8 @@ QEMU por el binario Linux. El paquete incluye QEMU 11.1.0 del instalador
 
 ### Límites
 
-**No se ha probado en Windows real.** WHPX, permisos efectivos de usuario estándar,
+**Al publicar v0.3.0 no se había probado en Windows real.** Los siguientes límites
+corresponden a esa entrega; la validación nativa posterior se documenta debajo. WHPX, permisos efectivos de usuario estándar,
 ACL de claves, SmartScreen, Defender, Firewall, VPN, WSL2/Hyper-V, suspensión y
 actualización siguen pendientes. Las pruebas Wine no certifican esos comportamientos.
 No hay firma Authenticode de Voxy, instalador MSI/NSIS ni Windows ARM64. Tampoco
@@ -238,3 +239,41 @@ El paquete es portátil. Para la prueba real, `Probar-Windows.cmd` usa WHPX y
 
 Artefacto Windows final: `Voxy-0.3.0-windows-x64.zip`, **157636969 bytes**.
 SHA-256: `e972bbd929c36a8f9a1d801f603ee9c7a90d5d24564d7c998b43e6fd3970af76`.
+
+## Windows x64 v0.3.1 — Windows real y terminal (2026-09-16)
+
+Anfitrión: Windows 10 Home Single Language 22H2, build 19045, x64, aproximadamente
+12 GiB RAM y 4 procesadores lógicos. HypervisorPlatform habilitado; doctor detectó
+WHPX. QEMU 11.1.0 y Debian 12 AMD64, con 512 MiB y 1 CPU para las pruebas.
+
+- Ciclo integral WHPX correcto con 0.3.0 y repetido con 0.3.1; último PASS
+  a las 08:27:01 UTC. Primer arranque, SSH, DNS/APT, sincronización del kernel,
+  apagado, integridad qcow2, ampliación de 1 a 2 GiB, rechazo de reducción y
+  ampliación en caliente, segundo arranque y persistencia. VMs de prueba apagadas.
+- Invitado después del segundo arranque: unos 52 MiB RAM usados y 276 MiB de disco
+  utilizados. Estas cifras no representan la memoria del proceso QEMU anfitrión.
+- Siete pruebas unitarias ejecutadas en Windows: PASS. Una consola Windows real
+  reprodujo códigos de bracketed paste y color visibles con ANSI deshabilitado;
+  al activar el modo VT mostró solo VOXY y restauró el modo original al finalizar.
+- SSH interactivo contra la VM habitual: colores, flecha arriba/historial, pegado
+  delimitado, Ctrl+C y salida correctos. El tamaño cambió de 30 filas × 100 columnas
+  a 40 × 120 y se reflejó en stty size dentro de Debian.
+- SSH escuchaba únicamente en 127.0.0.1. ACL del directorio de datos y la clave:
+  usuario actual y SYSTEM con control total, directorio con DACL protegida.
+  Defender y protección en tiempo real activos; conexión remota mediante Tailscale.
+- Se observó QEMU TCG y un panel habitual sin elevación. Las pruebas WHPX por SSH
+  usaron elevación: falta repetir ese ciclo completo como usuario estándar.
+- Se instaló el ejecutable corregido conservando el anterior como respaldo. La
+  VM habitual TCG y las sesiones existentes se mantuvieron; los paneles existentes
+  deben cerrarse y abrirse para cargar la versión nueva.
+
+Corrección: activar VT en stdout/stderr de consola, restaurar sus modos al salir,
+consultar tamaño desde stdout y enviar cambios al PTY SSH. Las salidas redirigidas
+no se modifican. El ejecutable empaquetado coincide byte por byte con el probado.
+
+Pendiente: Windows 11, ARM64, instalación limpia/SmartScreen, firma Authenticode,
+MSI, actualización/desinstalación, backup/restauración, suspensión y matriz amplia
+de Firewall/VPN/WSL2. Docker y Lupa aún no están incluidos.
+
+Artefacto: Voxy-0.3.1-windows-x64.zip, **157640854 bytes**.
+SHA-256: `0d370f6bff06a09b764611ae7a6dab4d6a9d386a841625432367c625dd96bb9d`.
