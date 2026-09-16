@@ -45,3 +45,18 @@ limpian automáticamente compilaciones ni paquetes de otras aplicaciones.
 
 Referencias: [Homebrew](https://docs.brew.sh/Installation),
 [MacPorts](https://www.macports.org/install.php).
+
+### QEMU 11.1.1: configuración sin descargas externas
+
+Durante la prueba de Ventura, el configurador de QEMU quedó esperando en su
+instalación de herramientas desde PyPI. El código fuente ya incluye la rueda
+`qemu_qmp-0.0.6`; faltaban herramientas del intérprete usado por el port.
+
+El instalador de Voxy prepara `py314-pip` y `py314-wheel` mediante MacPorts y pasa
+`configure.pre_args=--prefix=/opt/local --disable-download` al port de QEMU
+(adaptando el prefijo si es distinto). QEMU usa así sus ruedas incluidas y los
+paquetes proporcionados por MacPorts. No se desactiva el sandbox del gestor ni
+se instala con pip sobre un Python global fuera de su control.
+
+Este ajuste corresponde a QEMU 11.1.1 y al port que utiliza Python 3.14; si MacPorts
+cambia su intérprete de construcción, habrá que revisar esos nombres de paquetes.

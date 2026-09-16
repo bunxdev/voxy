@@ -9,10 +9,13 @@ if ! command -v "$qemu" >/dev/null || ! command -v qemu-img >/dev/null; then
     brew update
     HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install qemu
   elif command -v port >/dev/null; then
+    # QEMU 11.1.1 uses these tools at configure time; keep network in MacPorts fetch.
+    sudo port -N install py314-pip py314-wheel
+    port_prefix=$(cd "$(dirname "$(command -v port)")/.." && pwd)
     if [[ $(uname -m) = x86_64 ]]; then
-      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_arm -target_i386 +target_x86_64
+      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_arm -target_i386 +target_x86_64 "configure.pre_args=--prefix=$port_prefix --disable-download"
     else
-      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_i386 -target_x86_64 +target_arm
+      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_i386 -target_x86_64 +target_arm "configure.pre_args=--prefix=$port_prefix --disable-download"
     fi
   else
     echo 'Instala Homebrew o MacPorts para tu versión de macOS y vuelve a ejecutar este script.' >&2
