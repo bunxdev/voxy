@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Compatible with the Bash 3.2 shipped by macOS.
 set -euo pipefail
+export LC_ALL=C
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:$PATH"
 OS=$(uname -s)

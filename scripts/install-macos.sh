@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 [[ $(uname -s) = Darwin ]] || { echo 'Este instalador requiere macOS'; exit 1; }
 export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:$PATH"
 case $(uname -m) in arm64) qemu=qemu-system-aarch64;; x86_64) qemu=qemu-system-x86_64;; *) exit 1;; esac
@@ -8,7 +9,11 @@ if ! command -v "$qemu" >/dev/null || ! command -v qemu-img >/dev/null; then
     brew update
     HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install qemu
   elif command -v port >/dev/null; then
-    sudo port -N install qemu
+    if [[ $(uname -m) = x86_64 ]]; then
+      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_arm -target_i386 +target_x86_64
+    else
+      sudo port -N install qemu -spice -vnc -cocoa -curses -usb -target_i386 -target_x86_64 +target_arm
+    fi
   else
     echo 'Instala Homebrew o MacPorts para tu versión de macOS y vuelve a ejecutar este script.' >&2
     echo 'https://brew.sh/  https://www.macports.org/install.php' >&2
