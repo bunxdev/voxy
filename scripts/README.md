@@ -60,3 +60,11 @@ se instala con pip sobre un Python global fuera de su control.
 
 Este ajuste corresponde a QEMU 11.1.1 y al port que utiliza Python 3.14; si MacPorts
 cambia su intérprete de construcción, habrá que revisar esos nombres de paquetes.
+
+## Construir instaladores DMG
+
+Para usuarios finales están disponibles los paquetes en
+[Releases](https://github.com/bunxdev/voxy/releases/tag/v0.2.0); incluyen QEMU y Debian.
+Para generar y comprobar esos paquetes desde macOS, consulta
+[packaging/macos/README.md](../packaging/macos/README.md) y los scripts
+`build-dmg.sh` / `test-dmg.sh`.

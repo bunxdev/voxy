@@ -4,6 +4,11 @@ set -euo pipefail
 export LC_ALL=C
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:$PATH"
+QEMU_DATA=()
+if [[ -d "$ROOT/bin" ]]; then
+  export PATH="$ROOT/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  QEMU_DATA=(-L "$ROOT/share/qemu")
+fi
 OS=$(uname -s)
 case $(uname -m) in arm64|aarch64) NATIVE=arm64;; x86_64) NATIVE=amd64;; *) echo 'CPU no soportada' >&2; exit 1;; esac
 ARCH=${VOXY_ARCH:-$NATIVE}
@@ -48,7 +53,9 @@ init() {
   [[ ! -e "$STATE/disk.qcow2" ]] || { echo 'Ya existe una VM; no se sobrescribe' >&2; return 1; }
   local stage
   stage=$(mktemp -d "$STATE/.download.XXXXXX")
-  if ! curl -fL --retry 3 "$IMAGE_URL" -o "$stage/image.tar.xz"; then rm -rf "$stage"; return 1; fi
+  if [[ -f "$ROOT/images/base.tar.xz" ]]; then
+    cp "$ROOT/images/base.tar.xz" "$stage/image.tar.xz"
+  elif ! curl -fL --retry 3 "$IMAGE_URL" -o "$stage/image.tar.xz"; then rm -rf "$stage"; return 1; fi
   if ! (cd "$stage" && printf '%s  image.tar.xz\n' "$IMAGE_SHA256" | shasum -a 256 -c -); then rm -rf "$stage"; return 1; fi
   if ! tar -xJf "$stage/image.tar.xz" -C "$stage"; then rm -rf "$stage"; return 1; fi
   # Only import the verified guest artifacts. Voxy owns the host launcher.
@@ -68,7 +75,7 @@ start() {
   local cpu=max machine=q35 console=ttyS0
   if [[ "$accel" != tcg ]]; then cpu=host; fi
   if [[ "$ARCH" = arm64 ]]; then machine=virt,highmem=off; console=ttyAMA0; fi
-  "$QEMU" -name "voxy-$ARCH" -machine "$machine" -cpu "$cpu" -accel "$accel" \
+  "$QEMU" ${QEMU_DATA[@]+"${QEMU_DATA[@]}"} -name "voxy-$ARCH" -machine "$machine" -cpu "$cpu" -accel "$accel" \
     -m "$RAM" -smp "$CPUS" -kernel "$STATE/kernel" -initrd "$STATE/initramfs" \
     -append "console=$console root=/dev/vda rootfstype=ext4 rw quiet" \
     -drive "file=$STATE/disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap" \

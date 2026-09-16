@@ -130,3 +130,55 @@ separados del código. Se puede iniciar con `./voxy start`, esperar con
 El soporte comprobado es el CLI con QEMU + Debian en estos equipos y versiones.
 Siguen pendientes el paquete gráfico firmado/notarizado, actualización y recuperación,
 suspensión del anfitrión, carpetas compartidas, Windows y la integración de Lupa.
+
+## DMG v0.2.0 — Intel y Apple Silicon
+
+Se construyeron paquetes independientes en las dos Macs. Cada DMG incluye una
+`Voxy.app` con panel de Terminal, el QEMU nativo 11.1.1, `qemu-img`, las bibliotecas
+transitivas y la imagen limpia de Debian 12 fijada por SHA-256. No incluye Docker
+ni Lupa. ARM declara macOS 15+ e Intel macOS 13+; los comandos `LC_BUILD_VERSION`
+de sus binarios y bibliotecas indican respectivamente `minos 15.0` y `13.0`.
+
+| Paquete | Máquina de prueba | Resultado |
+| --- | --- | --- |
+| `Voxy-0.2.0-macos-arm64.dmg` | Mac mini M1, macOS 15.5 | PASS, HVF |
+| `Voxy-0.2.0-macos-amd64.dmg` | MacBook Pro Intel, macOS 13.6.9 | PASS, HVF |
+
+Procedimiento ejecutado mediante `scripts/test-dmg.sh` sobre los DMG finales:
+
+- `hdiutil verify`, montaje, copia a una ruta con espacios y desmontaje.
+- `codesign --verify --deep --strict` sobre la aplicación copiada.
+- Auditoría `otool -L` de todos los ejecutables/bibliotecas: sin referencias
+  externas a Homebrew/MacPorts; traza de bibliotecas de `qemu-img` sin esos prefijos.
+- PATH limitado a herramientas del sistema y binarios incluidos por la CLI.
+  Los gestores siguen instalados en los anfitriones; no se simula un Mac limpio.
+- Inicialización con proxy HTTPS inválido: utiliza la imagen incluida y valida SHA-256.
+- VM nueva, 512 MiB RAM, 1 CPU, SSH local puerto 22333, HVF nativo.
+- Debian 12 y arquitectura correctos; DNS, `apt-get update`, SSH y servicios sanos.
+- Sincronización del kernel e initramfs sin cambios de checksum.
+- Rechazo de ampliación con VM encendida; apagado, `qemu-img check`, ampliación
+  de 1 a 2 GiB y rechazo de reducción; nuevo arranque con datos conservados.
+- Comprobación del sistema de archivos ampliado y apagado limpio; integridad qcow2.
+- Panel de Terminal: estado y opción de cierre. Apertura de `.app` mediante `open`
+  en ambas sesiones gráficas y comprobación del proceso `Voxy.command` en Terminal.
+
+Las VMs de prueba quedaron apagadas. Las VMs anteriores en Application Support
+no se modificaron. Los directorios temporales con evidencias permanecen en cada
+Mac; se imprime su ubicación al finalizar el script.
+
+La firma es ad-hoc, con entitlement Hypervisor para QEMU. Ambas Macs reportaron
+cero identidades Developer ID disponibles. No hay notarización ni ticket Apple.
+No se verificó el flujo de cuarentena/Gatekeeper de una descarga web en un Mac
+limpio; tampoco versiones de macOS distintas de las dos indicadas, suspensión,
+actualización automática ni desinstalación. No se desactivó Gatekeeper.
+
+Regresión adicional del launcher fuente en Linux x86_64: arranque KVM, espera
+SSH, `uname -m` y apagado correctos después de añadir la detección del runtime
+incluido en la aplicación.
+
+Artefactos finales:
+
+| Archivo | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `Voxy-0.2.0-macos-arm64.dmg` | 119870094 | `1251c03c2ff9490599e5ff849cfee3a849c430f3dd1f6284c18370e0dad08bf5` |
+| `Voxy-0.2.0-macos-amd64.dmg` | 124678059 | `0d5d53dfba81c07fac21efbf0643eb14a1d35e5ed1a247f7f5d8e08dda67dd06` |
