@@ -156,3 +156,73 @@ No se han trasladado todavía sus servicios a esta VM.
 - [Opciones y aceleradores de QEMU](https://www.qemu.org/docs/master/system/invocation.html).
 
 Si se usa Python en futuras herramientas del constructor, se ejecutará con `uv`.
+
+## Checklist detallado: Apple y Windows
+
+Estos puntos son trabajo pendiente; los scripts actuales se probaron en Linux.
+Los aceleradores y opciones deben validarse contra la versión concreta de QEMU
+que distribuyamos, no solo contra la documentación de desarrollo.
+
+### Base compartida
+
+- [ ] Elegir versiones mínimas del sistema anfitrión y fijar una versión de QEMU.
+- [ ] Detectar SO/arquitectura y descargar el invitado correspondiente:
+  ARM64 para Apple Silicon/Windows ARM64; AMD64 para Mac Intel/Windows x64.
+- [ ] Usar la base mínima [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd)
+  en lugar de la referencia cloud amd64, manteniendo la base ARM existente.
+- [ ] Reemplazar dependencias de Bash, `/proc`, `flock`, señales POSIX y sockets
+  Unix por un supervisor portable con QMP y gestión de procesos propia.
+- [ ] Desacoplar el inicio de SSH del uso de OpenSSH del anfitrión o distribuir
+  un cliente probado; proteger claves con permisos/ACL correctos por sistema.
+- [ ] Separar recursos de instalación de discos/configuración en el directorio
+  de datos del usuario; probar rutas con espacios, Unicode y usuarios sin privilegios.
+- [ ] Verificar descarga, firma/checksum, instalación interrumpida y recuperación.
+- [ ] Probar red NAT, DNS, VPN/proxy y puertos locales ocupados sin exponer servicios.
+- [ ] Gestionar apagado, cierre del launcher, suspensión/reanudación y actualizaciones
+  del anfitrión; nunca modificar o ampliar un disco abierto por QEMU.
+
+### Apple: macOS Intel y Apple Silicon
+
+- [ ] Preparar binarios QEMU y dependencias para `x86_64` y `arm64`.
+- [ ] Implementar y probar HVF con CPU/máquina adecuadas a cada arquitectura;
+  la base ARM hoy fuerza TCG y necesita adaptación para aceleración nativa.
+- [ ] Validar arranque directo del kernel, `fw_cfg`, virtio, red y crecimiento ext4
+  bajo HVF; no asumir que la configuración TCG funciona sin cambios.
+- [ ] Configurar y probar permisos de Hypervisor y firma del ejecutable QEMU
+  y sus dependencias dentro del paquete de la aplicación.
+- [ ] Guardar datos en `~/Library/Application Support/Voxy` y resolver permisos
+  de carpetas compartidas seleccionadas por el usuario.
+- [ ] Crear `.app` y `.dmg` para ambas arquitecturas o un paquete universal probado.
+- [ ] Firmar, notarizar y adjuntar el ticket; verificar instalación con Gatekeeper
+  desde una descarga nueva en un Mac sin herramientas de desarrollo.
+- [ ] Probar Apple Silicon y Mac Intel reales: primer inicio, SSH, APT, persistencia,
+  backup/restauración, actualización, suspensión y desinstalación conservando datos.
+
+### Windows x64 y ARM64
+
+- [ ] Preparar QEMU y todas sus DLL para cada arquitectura de Windows soportada.
+- [ ] Detectar virtualización del procesador y disponibilidad de Windows Hypervisor
+  Platform; explicar cómo habilitarla y si requiere reiniciar, antes de iniciar la VM.
+- [ ] Implementar y probar WHPX en x64; comprobar por separado soporte ARM64
+  de la versión/build distribuida y del dispositivo real. TCG será una opción explícita.
+- [ ] Adaptar argumentos, rutas, pipes/canales de control, manejo de procesos y
+  archivos bloqueados; los scripts `.sh` actuales no son un launcher Windows nativo.
+- [ ] Guardar discos/configuración en `%LOCALAPPDATA%\Voxy`, aplicar ACL a claves
+  y probar ejecución sin administrador después de instalar los prerrequisitos.
+- [ ] Probar Windows Firewall, Defender, VPN y coexistencia con WSL2/Hyper-V;
+  mantener SSH/API/CDP en loopback salvo configuración explícita del usuario.
+- [ ] Crear instalador `.exe` o `.msi`, firma de código, actualización y desinstalación
+  con opción clara para conservar o borrar los discos del usuario.
+- [ ] Probar x64 y ARM64 reales desde Windows limpio: primer arranque, SSH, APT,
+  disco ampliable, persistencia, backup/restauración y suspensión/reanudación.
+
+### Criterio para declarar soporte
+
+- [ ] Publicar matriz de versiones de SO, CPU, QEMU y acelerador realmente probados.
+- [ ] Automatizar pruebas por plataforma y archivar resultados de hardware real
+  cuando la CI no tenga virtualización disponible.
+- [ ] Con QEMU + Debian estable, repetir la matriz incorporando Docker y todas
+  las funciones de Lupa: escritorio, perfil, descargas, audio, CDP y MCP.
+
+Referencias: [aceleradores QEMU](https://www.qemu.org/docs/master/system/introduction.html)
+y [plataformas de construcción](https://www.qemu.org/docs/master/about/build-platforms.html).
