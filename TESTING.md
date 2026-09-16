@@ -51,7 +51,7 @@ Registro completo local: `.runtime/arm64/test-logs.FjNwYw/results.log`.
 El registro no se versiona; estos resultados resumen esta ejecución concreta.
 Los consumos medidos son del invitado y no equivalen al RSS del proceso QEMU.
 
-## Límites
+## Límites de la primera validación Linux
 
 No se ha probado HVF, WHPX ni aceleración ARM nativa. La variante ARM utiliza
 TCG y puede tardar minutos. La referencia cloud amd64 no es una imagen mínima
@@ -88,3 +88,45 @@ El launcher nuevo completó `./voxy init` y `./voxy test` en Debian 13 con
 QEMU 10.0.13 y KVM: todos los pasos, incluida sincronización de kernel, pasaron.
 Medición final: 57 MiB de RAM usados en el invitado y 276 MiB de disco ocupado.
 VM apagada al terminar. Estos valores varían y no equivalen al RSS de QEMU.
+
+### MacBook Pro Intel i5-8257U, macOS 13.6.9
+
+- QEMU **11.1.1**, construido por MacPorts **2.12.6**, objetivo x86_64 y **HVF**.
+- MacPorts para Ventura se descargó con SHA256 fijado. Algunas dependencias
+  (GLib) y QEMU requirieron compilación local, además de Clang/LLVM 17. La instalación
+  inicial fue considerablemente más lenta que usar el paquete Homebrew de la M1.
+- QEMU usa la variante de objetivo x86_64 sin Cocoa, curses, SPICE, VNC o USB.
+  El gestor informó instalación correcta y ninguna biblioteca/puerto roto.
+- Se resolvió una espera en la descarga de herramientas de construcción:
+  `py314-pip` y `py314-wheel` se instalaron mediante MacPorts y QEMU se configuró
+  con `--disable-download`, usando sus ruedas incluidas. Ajuste incorporado al instalador.
+- Se fijó `LC_ALL=C` en los scripts para evitar avisos de locale heredado por SSH.
+- Imagen AMD64 v0.1.0 descargada de GitHub y verificada por SHA256.
+- Instalación bajo el usuario normal, datos en
+  `~/Library/Application Support/Voxy/amd64`; ruta con espacios comprobada.
+- `./scripts/install-macos.sh` y `./voxy test` terminaron con código **0**:
+
+```
+PASS: Darwin amd64 hvf; SSH, APT, disco y persistencia
+Voxy amd64 apagado
+```
+
+- Pasaron arranque con HVF, Debian 12/x86_64, SSH por clave, DNS/APT,
+  sincronización de kernel con hashes idénticos, rechazo de resize encendido,
+  apagado, integridad QCOW2, ampliación 1→2 GiB, rechazo de reducción y persistencia
+  después de un arranque con identificador nuevo. Ninguna unidad systemd fallida.
+- 512 MiB configurados; Debian informó 470 MiB totales, **53 MiB usados**,
+  416 MiB disponibles. Disco final: **276 MiB usados**, aproximadamente 1,7 GiB libres.
+- VM apagada al terminar; no se instaló Docker ni Lupa en ella.
+
+### Estado entregado en ambas Macs
+
+Código instalado en `~/voxy`, con historial Git del repositorio. Se transfirió
+mediante Git bundle por SSH para no copiar credenciales de GitHub a las Macs.
+Los discos de prueba ampliados a 2 GiB se conservan en el directorio de datos,
+separados del código. Se puede iniciar con `./voxy start`, esperar con
+`./voxy wait` y entrar mediante `./voxy ssh`.
+
+El soporte comprobado es el CLI con QEMU + Debian en estos equipos y versiones.
+Siguen pendientes el paquete gráfico firmado/notarizado, actualización y recuperación,
+suspensión del anfitrión, carpetas compartidas, Windows y la integración de Lupa.
