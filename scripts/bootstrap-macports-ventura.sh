@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Only needed for a clean Intel Mac running Ventura without a package manager.
 set -euo pipefail
+export LC_ALL=C
 [[ $(uname -s) = Darwin && $(uname -m) = x86_64 && $(sw_vers -productVersion) = 13.* ]] || { echo 'Este bootstrap requiere macOS 13 Ventura Intel'; exit 1; }
 if [[ -x /opt/local/bin/port ]]; then /opt/local/bin/port version; exit 0; fi
 stage=$(mktemp -d)
