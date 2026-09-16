@@ -1,4 +1,4 @@
-VOXY 0.3.1 - WINDOWS X64 - VERSION EXPERIMENTAL
+VOXY 0.4.0 - WINDOWS X64 - VERSION EXPERIMENTAL
 
 1. Extrae TODO el ZIP en una carpeta local. No ejecutes Voxy dentro del ZIP.
 2. Abre Voxy.exe: el panel permite iniciar Debian, abrir su terminal y apagar.
@@ -52,3 +52,18 @@ pendiente: revisa primero el error. Stop y el siguiente Start reintentan aplicar
 TERMINAL 0.3.1: interpreta secuencias ANSI en la consola Windows, usa el tamano
 real de la ventana y lo sincroniza al redimensionar. Mantiene bracketed paste.
 Los codigos de control no deben aparecer como texto en la consola interactiva.
+
+RECUPERACION 0.4.0:
+Primera copia al arrancar, despues cada 10 minutos si hubo escrituras. Conserva
+3 puntos completos de disco (sin RAM) en el directorio de datos, carpeta backups.
+El menu permite crear, ver y restaurar puntos. Restaurar requiere VM apagada y
+conserva el disco anterior en before-restore-FECHA. No se restaura automaticamente.
+Cierra los paneles de versiones anteriores y apaga/inicia Debian con 0.4.0 para
+activar esta funcion. VM y copias siguen funcionando al cerrar el panel o SSH.
+Tras reiniciar Windows, abre Voxy y elige Iniciar Debian.
+
+Una copia incompleta no sustituye las anteriores. El panel muestra errores/fecha
+de ultima copia. Se requiere espacio libre del tamano virtual del disco + 512 MiB.
+Las copias son locales: no protegen de una averia fisica del disco del equipo.
+Comandos: Voxy.exe backup | backups | restore ID
+Detalles: https://github.com/bunxdev/voxy/blob/main/docs/RECOVERY.md

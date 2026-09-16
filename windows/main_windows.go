@@ -27,9 +27,10 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.3.1"
+const version = "0.4.0"
 
 type app struct {
+	noAutoBackup       bool
 	root, state, accel string
 	port, ram, cpus    int
 }
@@ -49,13 +50,7 @@ func env(key, fallback string) string {
 }
 func (a *app) path(name string) string   { return filepath.Join(a.state, name) }
 func (a *app) binary(name string) string { return filepath.Join(a.root, "qemu", name+".exe") }
-func writeJSON(path string, v any) error {
-	b, e := json.MarshalIndent(v, "", "  ")
-	if e != nil {
-		return e
-	}
-	return os.WriteFile(path, b, 0600)
-}
+func writeJSON(path string, v any) error { return durableJSON(path, v) }
 func (a *app) secureState() error {
 	if err := os.MkdirAll(a.state, 0700); err != nil {
 		return err
@@ -188,6 +183,9 @@ func copyFile(from, to string) error {
 		return e
 	}
 	_, e = io.Copy(out, in)
+	if e == nil {
+		e = out.Sync()
+	}
 	ce := out.Close()
 	if e != nil {
 		return e
@@ -268,7 +266,10 @@ func (a *app) start() error {
 	}
 	if alive {
 		fmt.Println("Voxy ya está encendido")
-		return nil
+		return a.startBackupWorker()
+	}
+	if e = a.applyRestore(); e != nil {
+		return e
 	}
 	if e = a.applyKernelUpdate(); e != nil {
 		return e
@@ -289,6 +290,10 @@ func (a *app) start() error {
 			return errors.New("Ejecuta Voxy.exe init primero")
 		}
 	}
+	if _, e = a.image("check", "-f", "qcow2", "disk.qcow2"); e != nil {
+		return fmt.Errorf("El disco requiere revisión; no se modifica automáticamente. Usa backups / restore si necesitas recuperar: %w", e)
+	}
+	_ = os.Remove(a.path("qmp.sock"))
 	signer, e := a.key()
 	if e != nil {
 		return e
@@ -301,7 +306,7 @@ func (a *app) start() error {
 	}
 	// CreateProcessW sets a Unicode working directory. Relative ASCII filenames
 	// avoid this QEMU build's narrow Win32 file-path conversion for accented names.
-	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", fmt.Sprintf("user,id=net,hostfwd=tcp:127.0.0.1:%d-:22", a.port), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-serial", "file:serial.log"}
+	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap,cache=writeback", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", fmt.Sprintf("user,id=net,hostfwd=tcp:127.0.0.1:%d-:22", a.port), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-qmp", "unix:qmp.sock,server=on,wait=off", "-serial", "file:serial.log"}
 	if accel == "tcg" {
 		args = append(args, "-cpu", "max")
 	}
@@ -339,7 +344,7 @@ func (a *app) start() error {
 		return a.qemuError("QEMU terminó")
 	}
 	fmt.Printf("Voxy iniciado (%s), SSH 127.0.0.1:%d\n", accel, a.port)
-	return nil
+	return a.startBackupWorker()
 }
 func (a *app) client() (*ssh.Client, error) {
 	r, alive, e := a.running()
@@ -665,6 +670,20 @@ func (a *app) status() error {
 		fmt.Println("Voxy apagado")
 	}
 	fmt.Println("Datos:", a.state)
+	if os.Getenv("VOXY_AUTO_BACKUP") == "0" {
+		fmt.Println("Copias automáticas desactivadas en esta sesión")
+	} else {
+		fmt.Println("Copias automáticas: cada 10 min con escrituras, 3 puntos locales (requiere arranque con 0.4.0)")
+	}
+	if b, e := os.ReadFile(a.path("backup-status.json")); e == nil {
+		var status backupStatus
+		if json.Unmarshal(b, &status) == nil {
+			fmt.Println("Recuperación:", status.Message)
+			if !status.LastSuccess.IsZero() {
+				fmt.Println("Última copia:", status.LastSuccess.Local().Format(time.RFC3339))
+			}
+		}
+	}
 	return nil
 }
 func (a *app) doctor() error {
@@ -690,12 +709,12 @@ func (a *app) doctor() error {
 func (a *app) dispatch(args []string) error {
 	action := args[0]
 	switch action {
-	case "init", "start", "stop", "resize", "sync-kernel":
-		lock := a.path("control.lock")
-		if e := os.Mkdir(lock, 0700); e != nil {
-			return fmt.Errorf("Otra operación está activa; si hubo una interrupción revisa antes de retirar %s: %w", lock, e)
+	case "init", "start", "stop", "resize", "sync-kernel", "restore":
+		unlock, e := a.lock("control")
+		if e != nil {
+			return e
 		}
-		defer os.Remove(lock)
+		defer unlock()
 	}
 	switch action {
 	case "init":
@@ -722,10 +741,21 @@ func (a *app) dispatch(args []string) error {
 			return a.shell()
 		}
 		return a.remote(strings.Join(args[1:], " "), os.Stdout)
+	case "backup":
+		return a.backup(false)
+	case "backups":
+		return a.listBackups()
+	case "backup-worker":
+		return a.backupWorker()
+	case "restore":
+		if len(args) != 2 {
+			return errors.New("Uso: Voxy.exe restore ID (VM apagada)")
+		}
+		return a.restore(args[1])
 	case "test":
 		return a.testVM()
 	default:
-		return errors.New("Uso: Voxy.exe {init|start|wait|ssh [comando]|status|stop|resize 8G|sync-kernel|doctor|test}")
+		return errors.New("Uso: Voxy.exe {init|start|wait|ssh [comando]|status|stop|resize 8G|sync-kernel|doctor|backup|backups|restore ID|test}")
 	}
 }
 func (a *app) menu() {
@@ -734,7 +764,7 @@ func (a *app) menu() {
 	for {
 		fmt.Println()
 		_ = a.status()
-		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n> ")
+		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n6) Crear punto de recuperación\n7) Ver puntos de recuperación\n8) Restaurar un punto (VM apagada)\n> ")
 		line, e := reader.ReadString('\n')
 		if e != nil {
 			return
@@ -757,6 +787,22 @@ func (a *app) menu() {
 			err = a.dispatch([]string{"stop"})
 		case "4":
 			err = a.doctor()
+		case "6":
+			err = a.dispatch([]string{"backup"})
+		case "7":
+			err = a.listBackups()
+		case "8":
+			_ = a.listBackups()
+			fmt.Print("ID a restaurar (Enter cancela): ")
+			id, _ := reader.ReadString('\n')
+			id = strings.TrimSpace(id)
+			if id != "" {
+				fmt.Print("Se volverá a ese punto y se conservará el disco actual. Escribe RESTAURAR: ")
+				answer, _ := reader.ReadString('\n')
+				if strings.TrimSpace(answer) == "RESTAURAR" {
+					err = a.dispatch([]string{"restore", id})
+				}
+			}
 		case "5":
 			return
 		default:

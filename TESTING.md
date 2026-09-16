@@ -277,3 +277,49 @@ de Firewall/VPN/WSL2. Docker y Lupa aún no están incluidos.
 
 Artefacto: Voxy-0.3.1-windows-x64.zip, **157640854 bytes**.
 SHA-256: `0d370f6bff06a09b764611ae7a6dab4d6a9d386a841625432367c625dd96bb9d`.
+
+## Windows x64 v0.4.0 — recuperación (2026-09-16)
+
+Mismo Windows 10 Home 22H2 x64 (19045), QEMU 11.1.0 y WHPX. Se usaron VMs de
+prueba separadas, 512 MiB y 1 CPU. La VM habitual permaneció encendida durante
+las pruebas destructivas. No se cortó la alimentación del equipo del usuario.
+
+- Doce pruebas unitarias nativas: PASS. Las cinco nuevas cubren exclusión y
+  liberación del bloqueo al terminar su proceso a la fuerza; rechazo de copia
+  corrupta antes de tocar el disco actual; reanudación de restauración interrumpida;
+  omisión de puntos incompletos/IDs inválidos; y omisión de copia automática cuando
+  el contador QMP de escrituras no cambia.
+- Ciclo completo WHPX con el código final: PASS a las 08:54:01 UTC. SSH, DNS/APT,
+  kernel, ampliación, persistencia, QCOW2 y apagado; invitado 52 MiB usados y
+  276 MiB de disco usados después de ampliar a 2 GiB.
+- Se terminó QEMU a la fuerza después de escribir y ejecutar sync: el siguiente
+  arranque conservó los datos. Una restauración recuperó el marcador anterior.
+- Después de varias copias quedaron exactamente tres puntos completos. Se terminó
+  QEMU y el proceso de copia mientras crecía un destino parcial: los tres puntos
+  anteriores conservaron sus hashes. La restauración y la siguiente copia pasaron;
+  el intento posterior limpió el temporal huérfano.
+- Una restauración interrumpida entre archivos se reprodujo con un diario persistente:
+  la reanudación completó los tres archivos y conservó todos los originales.
+- Al cerrar una sesión OpenSSH se descubrió que DETACHED_PROCESS por sí solo no
+  separaba los hijos del grupo de procesos de SSH. CREATE_BREAKAWAY_FROM_JOB
+  resolvió el cierre de QEMU y del trabajador; ambos sobrevivieron a la desconexión.
+- El ejecutable exacto del ZIP (compilado con trimpath y sin símbolos de depuración)
+  creó y verificó una copia; después de cambiar un marcador, restauró el valor
+  original y apagó Debian correctamente. SHA-256 del ejecutable:
+  `e1f49aa0ab2faa0de939a3946f8e19798197daf761abe5384adbc75bd5ddfa3c`.
+- Los 132 archivos del paquete instalado coincidieron con su manifiesto SHA-256.
+- Temporizador real, sin acortar el intervalo: primera copia a las 08:56:03 UTC,
+  siguiente a las 09:06:10 UTC (606,45 segundos). La sesión SSH que inició QEMU
+  y el trabajador ya estaba desconectada. Se restauró el segundo punto y se
+  comprobó el archivo escrito después del primero. La VM de prueba quedó apagada.
+  El script reproducible espera a que termine la primera copia antes de medir el
+  segundo intervalo, evitando confundir la copia inicial con una programada.
+
+Las copias son de disco, sin RAM; se solicita sync pero no se congelan ni coordinan
+transacciones de aplicaciones. No se ha simulado un corte eléctrico físico, fallo
+de hardware, Windows 11, ARM64, suspensión, ni aplicado este mecanismo a macOS/Linux.
+Las pruebas WHPX remotas siguen usando elevación. No se instaló un servicio de
+arranque automático de Windows. [Operación y límites](docs/RECOVERY.md).
+
+Artefacto: `Voxy-0.4.0-windows-x64.zip`, **157684368 bytes**.
+SHA-256: `91c6c17fc28e98ee4030c650441056c471882a3ff0318ab6c79601dfc7904c15`.
