@@ -1,0 +1,50 @@
+VOXY 0.3.0 - WINDOWS X64 - VERSION EXPERIMENTAL
+
+1. Extrae TODO el ZIP en una carpeta local. No ejecutes Voxy dentro del ZIP.
+2. Abre Voxy.exe: el panel permite iniciar Debian, abrir su terminal y apagar.
+3. Si falta WHPX, habilita "Plataforma de hipervisor de Windows" en
+   optionalfeatures.exe y reinicia. La virtualizacion del procesador debe estar
+   habilitada. Voxy no cambia estas opciones ni pide permisos de administrador.
+4. Para probar sin aceleracion de hardware, abre Voxy-TCG.cmd (mas lento).
+
+REQUISITOS OBJETIVO: Windows 10 version 2004+ / Windows 11, procesador x64.
+Solo se han hecho pruebas preliminares con Wine en Linux. Windows real y WHPX
+siguen pendientes; este ZIP se entrega para esas pruebas. No es Windows ARM64.
+No esta firmado con Authenticode. SmartScreen puede mostrar una advertencia.
+
+INCLUIDO: QEMU 11.1.0, DLL de dependencias, Debian 12, cliente SSH integrado.
+No necesitas instalar QEMU, Bash, Go, Docker ni OpenSSH. Docker y Lupa aun no
+estan instalados dentro del invitado. Primer inicio sin descarga adicional.
+
+DATOS: %LOCALAPPDATA%\Voxy\amd64. Reemplazar la carpeta del programa conserva
+los discos. No borres la carpeta de datos para actualizar. Usa una ruta sin comas.
+Memoria predeterminada: 512 MiB; CPU: 1; SSH: 127.0.0.1:22222.
+Cerrar el panel NO apaga Debian. Usa la opcion Apagar antes de cerrar Windows.
+
+PRUEBAS PARA COMPARTIR:
+- Probar-Windows.cmd: diagnostico y ciclo completo con WHPX.
+- Probar-TCG.cmd: ciclo completo con emulacion TCG (puede tardar varios minutos).
+Crean una VM nueva separada y amplian su disco de 1 a 2 GiB. La VM normal no se
+modifica. Los logs quedan en %LOCALAPPDATA%\Voxy\prueba-whpx.log o prueba-tcg.log.
+Comparte ese log si algo falla. Los datos de prueba se conservan para diagnostico.
+
+POWERSHELL, desde la carpeta extraida:
+  .\Voxy.exe doctor
+  .\Voxy.exe init
+  .\Voxy.exe start
+  .\Voxy.exe wait
+  .\Voxy.exe ssh
+  .\Voxy.exe stop
+  .\Voxy.exe resize 8G
+  .\Voxy.exe test
+Para TCG: $env:VOXY_ACCEL='tcg'
+Variables: VOXY_DATA_DIR, VOXY_SSH_PORT, VOXY_RAM_MB, VOXY_CPUS, VOXY_ACCEL.
+
+RED: solo SSH en loopback. No se abre ningun puerto a la red local.
+Copia de seguridad: apaga la VM antes de copiar su directorio de datos.
+No hay instalador MSI, actualizador automatico ni desinstalador en esta entrega.
+
+KERNEL: .\Voxy.exe sync-kernel descarga los archivos desde Debian y los deja
+preparados. Se aplican despues del apagado porque QEMU mantiene initramfs abierto
+en Windows. No borres archivos .next ni kernel-update.json si hay una operacion
+pendiente: revisa primero el error. Stop y el siguiente Start reintentan aplicarla.
