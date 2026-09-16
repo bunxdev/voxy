@@ -1,100 +1,129 @@
 # Voxy
 
-Base de máquina virtual pequeña para ejecutar Debian en QEMU. El objetivo futuro
-es llevar Lupa y otras aplicaciones Linux a Linux, macOS y Windows mediante una
-VM administrada por Voxy. **Esta primera etapa incluye solamente QEMU + Debian.**
+QEMU + Debian mínimo como base independiente para ejecutar Lupa y otras
+aplicaciones Linux. **La etapa actual no instala Docker ni Lupa en la VM.**
 
-## Base elegida
+El launcher selecciona AMD64 para Intel/AMD y ARM64 para Apple Silicon/ARM.
+En macOS usa HVF, en Linux KVM cuando está disponible y TCG como alternativa
+explícita. Las pruebas reales y sus límites están en [TESTING.md](TESTING.md).
+Windows aún necesita un launcher nativo y pruebas.
 
-Reutilizamos [bunxdev/qemu-debian-arm](https://github.com/bunxdev/qemu-debian-arm)
-como submódulo fijado a un commit en `upstream/qemu-debian-arm`. Su Release v0.1.1
-contiene Debian 12 ARM64, kernel e initramfs, disco inicial de 1 GiB ampliable y
-SSH por clave. La descarga comprimida ocupa unos **97 MiB**. El script de descarga
-verifica el SHA256 fijado antes de extraer. No requiere cloud-init ni firmware UEFI.
+## Instalación en macOS
 
-Además mantenemos una **referencia amd64** con Debian 13 genericcloud oficial,
-checksum SHA512 y versión fijados en `image.lock`: unos 326 MiB de descarga,
-768 MiB de RAM, una CPU y 8 GiB de capacidad virtual mediante overlay QCOW2.
-Sirve para validar KVM en este anfitrión x86_64. No es todavía una construcción
-amd64 equivalente a la imagen ARM mínima; contiene cloud-init y más paquetes.
-
-Los tamaños de descarga, disco ocupado y capacidad virtual son medidas distintas.
-Ninguna imagen de VM, clave o disco de usuario se guarda en Git.
-
-## Empezar en Linux Debian/Ubuntu
+Clonar este repositorio privado usando una cuenta con acceso:
 
 ```bash
-sudo apt-get update
-sudo apt-get install --no-install-recommends git ca-certificates curl xz-utils \
-  openssh-client qemu-system-arm qemu-utils
-
-git clone --recurse-submodules https://github.com/bunxdev/voxy.git
+git clone https://github.com/bunxdev/voxy.git
 cd voxy
-./voxy-arm init
-./voxy-arm start
-# Esperar a que Debian termine de arrancar, especialmente bajo emulación TCG.
-./voxy-arm ssh
-./voxy-arm stop
-```
-
-Si ya clonaste sin submódulos: `git submodule update --init --recursive`.
-El repo es privado inicialmente; se necesita acceso a la cuenta correspondiente.
-ARM utiliza **TCG**, incluso en anfitriones ARM, porque así está implementado
-actualmente el proyecto base. SSH se publica en `127.0.0.1:22223` y el reenvío
-HTTP opcional en `127.0.0.1:28080`. No hay servidor web instalado por defecto.
-
-```bash
-# Con la VM apagada, aumentar capacidad total (no reduce discos):
-./voxy-arm resize 8G
-./voxy-arm start
-./voxy-arm ssh df -h /
-```
-
-La VM ARM usa 512 MiB de RAM y una CPU por defecto. Se pueden pasar
-`VM_RAM_MB`, `VM_CPUS`, `VM_SSH_PORT` y `VM_HTTP_PORT`; mantener los mismos puertos
-en los comandos posteriores. Los datos están en `.runtime/arm64`.
-Para actualizar kernel, seguir el procedimiento del README upstream y ejecutar
-`./voxy-arm sync-kernel` antes de apagar y arrancar con el kernel actualizado.
-
-### Referencia x86_64 con KVM
-
-```bash
-sudo apt-get install --no-install-recommends qemu-system-x86 cloud-image-utils
+./scripts/install-macos.sh
 ./voxy init
 ./voxy start
 ./voxy wait
 ./voxy ssh
-./voxy status
 ./voxy stop
 ```
 
-Requiere Bash, `flock`, herramientas GNU, Linux x86_64 y acceso funcional a
-`/dev/kvm`. La virtualización anidada depende del anfitrión. Si no hay KVM,
-`VOXY_ACCEL=tcg ./voxy start` selecciona emulación explícita. Esta alternativa
-TCG amd64 aún no está validada. SSH solo en `127.0.0.1:22222`, usuario `voxy`,
-sudo y autenticación por clave generada localmente. No hay contraseña predeterminada.
-La base y el overlay tienen dependencia de ruta: no mover `.cache` ni `.runtime`
-ni copiar únicamente el overlay. Para respaldar, apagar y conservar ambos.
+El instalador usa Homebrew o MacPorts, verifica QEMU y comprueba disponibilidad
+de HVF. La VM se inicia como usuario normal, sin sudo. Los submódulos no son
+necesarios para ejecutar el launcher; quedan como referencia del código ARM.
+
+- **Apple Silicon:** instalar Homebrew si falta, siguiendo [sus instrucciones](https://brew.sh/).
+  El script actualiza Homebrew antes de instalar QEMU para evitar incompatibilidades
+  entre una instalación antigua y las fórmulas nuevas.
+- **Intel con Ventura 13 sin gestor instalado:** ejecutar primero
+  `./scripts/bootstrap-macports-ventura.sh`, que descarga MacPorts 2.12.6,
+  verifica su SHA256 e invoca el instalador oficial con sudo. Luego ejecutar
+  `./scripts/install-macos.sh`. La sincronización inicial puede tardar varios minutos.
+- Otros sistemas macOS necesitan un gestor compatible con su versión.
+  No equivalen a plataformas probadas solo porque el script pueda ejecutarse.
+
+Datos persistentes en `~/Library/Application Support/Voxy/arm64` o
+`~/Library/Application Support/Voxy/amd64`. Incluyen disco, kernel, claves y logs;
+no se guardan en el repositorio. SSH solo escucha en `127.0.0.1:22222`.
+El invitado usa root con clave por instalación, sin contraseña predeterminada.
+
+## Instalación en Linux Debian/Ubuntu
+
+```bash
+sudo apt-get install --no-install-recommends qemu-system-x86 qemu-utils \
+  openssh-client curl ca-certificates xz-utils libdigest-sha-perl
+# En ARM sustituir qemu-system-x86 por qemu-system-arm.
+./voxy init
+./voxy start
+./voxy wait
+./voxy ssh
+./voxy stop
+```
+
+Datos locales en `.runtime/native-amd64` o `.runtime/native-arm64`.
+Bash, tar y herramientas básicas del sistema también son necesarios.
+`VOXY_ACCEL=tcg ./voxy start` selecciona emulación. Si KVM/HVF no funciona,
+se informa el error; no se cambia silenciosamente a otro acelerador.
+
+## Comandos y recursos
+
+```bash
+./voxy status
+./voxy stop
+./voxy resize 8G
+./voxy start
+./voxy wait
+./voxy ssh df -h /
+```
+
+Valores predeterminados: **512 MiB de RAM, 1 CPU, disco de 1 GiB ampliable**.
+El disco QCOW2 crece físicamente según se escriben datos. El crecimiento de ext4
+ocurre al arrancar. Se rechaza ampliar una VM encendida y reducir su capacidad.
+
+| Variable | Uso |
+| --- | --- |
+| `VOXY_ARCH` | `amd64` o `arm64`; por defecto arquitectura del anfitrión |
+| `VOXY_DATA_DIR` | Directorio independiente para otra VM, pruebas o datos |
+| `VOXY_ACCEL` | `auto`, `hvf`, `kvm` o `tcg` |
+| `VOXY_RAM_MB` / `VOXY_CPUS` | RAM y CPU para el próximo arranque |
+| `VOXY_SSH_PORT` | Puerto local; por defecto 22222 |
+
+Mantener las variables de arquitectura/directorio en los comandos posteriores.
+El puerto de la VM en ejecución se recuerda para SSH y apagado.
+Las rutas con espacios están probadas; las rutas con comas se rechazan por la
+sintaxis de opciones de QEMU. `./voxy-arm` es un alias que selecciona ARM64.
+
+Si una actualización de APT cambia el kernel, ejecutar `./voxy sync-kernel`
+**antes del siguiente apagado/reinicio**. Esto actualiza kernel e initramfs externos.
+Para respaldo, apagar y copiar el directorio completo de datos.
 
 ## Pruebas
 
-Ejecutar una VM a la vez:
-
 ```bash
-# ARM: requiere copia nueva apagada de 1 GiB; la amplía a 2 GiB.
-./voxy-arm test
-./voxy-arm stop
-
-# amd64: comprueba Debian, SSH, DNS y archivo persistente tras apagar y arrancar.
+# El test requiere una copia nueva apagada de 1 GiB y la amplía a 2 GiB.
+export VOXY_DATA_DIR="$HOME/voxy-test-nuevo"
+./voxy init
 ./voxy test
-./voxy stop
 ```
 
-El test ARM conserva registros en `.runtime/arm64/test-logs.*/` y no se repite
-sobre la misma copia ya ampliada. No borres una VM que contenga datos para repetir
-pruebas: prepara otra copia siguiendo el README upstream.
-Ambas pruebas dejan la VM encendida cuando terminan correctamente.
-Resultados y límites: [TESTING.md](TESTING.md).
+Comprueba descarga por checksum durante init, arquitectura, Debian 12, SSH,
+DNS/APT, ausencia de Docker, sincronización de kernel, apagado, integridad QCOW2,
+ampliación, rechazo de reducción y persistencia con un nuevo identificador de arranque.
+**La VM queda apagada si la prueba termina correctamente.** No borrar una VM
+con datos para repetirla: usar un directorio nuevo.
+
+Un bloqueo por directorio evita operaciones de control simultáneas. Si un proceso
+se interrumpe abruptamente, revisar que haya terminado antes de retirar su
+`control.lock`. Todavía falta recuperación automática y un supervisor QMP.
+
+## Imágenes y compatibilidad anterior
+
+- [Debian 12 ARM64 mínimo](https://github.com/bunxdev/qemu-debian-arm), v0.1.1,
+  aproximadamente 97 MiB de descarga.
+- [Debian 12 AMD64 mínimo](https://github.com/bunxdev/qemu-debian-amd), v0.1.0,
+  aproximadamente 105 MiB de descarga.
+- URLs y hashes SHA256 fijados en `images/*.lock`. Las imágenes no se guardan en Git.
+
+La referencia Debian 13 cloud previa sigue disponible como **`./voxy-cloud`**
+en Linux. Conserva sus archivos `.cache`, `.runtime/debian.qcow2` y `image.lock`.
+No se convierten ni sobrescriben discos antiguos automáticamente. La antigua
+copia ARM en `.runtime/arm64` también se conserva; sus scripts originales pueden
+seguir usándose. El nuevo CLI utiliza directorios distintos.
 
 ## Checklist del proyecto
 
@@ -109,14 +138,15 @@ Resultados y límites: [TESTING.md](TESTING.md).
 - [x] Validar aquí el ciclo completo ARM: arranque, SSH, DNS, APT y apagado.
 - [x] Validar aquí ampliación ARM, integridad QCOW2 y persistencia.
 - [x] Validar aquí el ciclo amd64 con KVM y persistencia.
-- [x] Construir imagen mínima amd64 equivalente a ARM, con inventario de paquetes: [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd). Su integración en el CLI de Voxy sigue pendiente.
+- [x] Construir imagen mínima amd64 equivalente a ARM, con inventario de paquetes: [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd). Integrada en el CLI nativo.
 - [ ] Automatizar la construcción limpia de ambas arquitecturas y fijar dependencias.
 - [ ] Medir descarga, disco real, RAM y tiempos; reducir sin romper APT, SSH o red.
 
 ### 2. Administración de la VM
 
-- [ ] Unificar ambos prototipos en un CLI con selección de arquitectura.
-- [ ] Validar y seleccionar KVM, HVF y WHPX según anfitrión/arquitectura.
+- [x] Unificar las bases mínimas ARM64/AMD64 en un CLI con selección de arquitectura.
+- [x] Seleccionar KVM/HVF/TCG en el launcher macOS/Linux; probar KVM amd64 y HVF ARM64.
+- [ ] Validar WHPX en Windows y KVM en ARM64 nativo.
 - [ ] Añadir control QMP y manejo robusto de fallos, procesos y puertos ocupados.
 - [ ] Añadir configuración persistente de CPU, RAM, discos y puertos.
 - [ ] Implementar backup/restauración, importación y actualización con recuperación.
@@ -126,9 +156,11 @@ Resultados y límites: [TESTING.md](TESTING.md).
 ### 3. Multiplataforma
 
 - [ ] Probar Linux x86_64 y ARM64 en hardware nativo.
-- [ ] Implementar y probar macOS Intel y Apple Silicon con HVF.
+- [x] Implementar y probar Apple Silicon con HVF.
+- [ ] Completar la prueba macOS Intel con HVF.
 - [ ] Implementar y probar Windows x64 y ARM64, verificando aceleración disponible.
-- [ ] Crear launcher con estado de VM, consola, recursos y errores comprensibles.
+- [x] Crear CLI con estado de VM, SSH, recursos y errores de operaciones.
+- [ ] Crear interfaz gráfica para administrar la VM.
 - [ ] Empaquetar Linux, `.exe`/instalador Windows y `.dmg` macOS.
 - [ ] Revisar distribución/licencias de QEMU y Debian, firmas y notarización.
 - [ ] CI y releases por plataforma, checksums y pruebas desde instalación limpia.
@@ -159,16 +191,17 @@ Si se usa Python en futuras herramientas del constructor, se ejecutará con `uv`
 
 ## Checklist detallado: Apple y Windows
 
-Estos puntos son trabajo pendiente; los scripts actuales se probaron en Linux.
+Las casillas marcadas reflejan pruebas realizadas; el detalle está en TESTING.md.
 Los aceleradores y opciones deben validarse contra la versión concreta de QEMU
 que distribuyamos, no solo contra la documentación de desarrollo.
 
 ### Base compartida
 
 - [ ] Elegir versiones mínimas del sistema anfitrión y fijar una versión de QEMU.
-- [ ] Detectar SO/arquitectura y descargar el invitado correspondiente:
-  ARM64 para Apple Silicon/Windows ARM64; AMD64 para Mac Intel/Windows x64.
-- [ ] Usar la base mínima [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd)
+- [x] Detectar SO/arquitectura y descargar el invitado correspondiente en macOS/Linux:
+  ARM64 para Apple Silicon/Linux ARM; AMD64 para Mac Intel/Linux x86_64.
+- [ ] Añadir la detección correspondiente al launcher Windows.
+- [x] Usar la base mínima [qemu-debian-amd](https://github.com/bunxdev/qemu-debian-amd)
   en lugar de la referencia cloud amd64, manteniendo la base ARM existente.
 - [ ] Reemplazar dependencias de Bash, `/proc`, `flock`, señales POSIX y sockets
   Unix por un supervisor portable con QMP y gestión de procesos propia.
@@ -184,14 +217,15 @@ que distribuyamos, no solo contra la documentación de desarrollo.
 ### Apple: macOS Intel y Apple Silicon
 
 - [ ] Preparar binarios QEMU y dependencias para `x86_64` y `arm64`.
-- [ ] Implementar y probar HVF con CPU/máquina adecuadas a cada arquitectura;
-  la base ARM hoy fuerza TCG y necesita adaptación para aceleración nativa.
+- [x] Adaptar la base ARM para HVF con CPU host y máquina virt; probado en M1.
+- [ ] Completar validación HVF AMD64 con máquina q35 en Mac Intel.
 - [ ] Validar arranque directo del kernel, `fw_cfg`, virtio, red y crecimiento ext4
   bajo HVF; no asumir que la configuración TCG funciona sin cambios.
 - [ ] Configurar y probar permisos de Hypervisor y firma del ejecutable QEMU
   y sus dependencias dentro del paquete de la aplicación.
-- [ ] Guardar datos en `~/Library/Application Support/Voxy` y resolver permisos
-  de carpetas compartidas seleccionadas por el usuario.
+- [x] Guardar datos en `~/Library/Application Support/Voxy`, con claves privadas
+  y rutas con espacios probadas en M1.
+- [ ] Resolver permisos de carpetas compartidas seleccionadas por el usuario.
 - [ ] Crear `.app` y `.dmg` para ambas arquitecturas o un paquete universal probado.
 - [ ] Firmar, notarizar y adjuntar el ticket; verificar instalación con Gatekeeper
   desde una descarga nueva en un Mac sin herramientas de desarrollo.

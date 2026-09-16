@@ -58,3 +58,33 @@ TCG y puede tardar minutos. La referencia cloud amd64 no es una imagen mínima
 construida a partir de la receta ARM. No se ha instalado Docker ni Lupa dentro
 de ninguna de estas nuevas VMs. Los resultados anteriores del proyecto ARM
 pertenecen a su documentación upstream; este informe distingue las pruebas locales.
+
+## Launcher nativo macOS/Linux — actualización
+
+Las pruebas anteriores corresponden al prototipo `voxy` original (ahora
+`voxy-cloud`) y a `voxy-arm` original. El nuevo `voxy` usa directamente las bases
+mínimas Debian 12 en las dos arquitecturas. No migra las VMs previas.
+
+### Mac mini Apple M1, macOS 15.5
+
+- QEMU 11.1.1 instalado con Homebrew, arquitectura ARM64 y aceleración **HVF**.
+- Homebrew necesitó actualizarse: la fórmula nueva de OpenSSL usaba una opción
+  desconocida para su versión anterior. `brew update` y `brew postinstall openssl@3`
+  resolvieron el fallo. El instalador de Voxy ahora actualiza Homebrew antes de instalar.
+- Imagen ARM v0.1.1 descargada desde GitHub y verificada por SHA256.
+- Datos en `~/Library/Application Support/Voxy/arm64`: la ruta con espacios funciona.
+- `./voxy test` pasó arranque, SSH, DNS/APT, ampliación de 1 a 2 GiB,
+  rechazo de reducción, apagado, integridad QCOW2 y persistencia tras nuevo arranque.
+- 512 MiB configurados; Debian informó 478 MiB totales, **41 MiB usados**,
+  437 MiB disponibles. Disco: **272 MiB usados** después de actualizar índices APT.
+- Prueba adicional del comando `sync-kernel`: hashes idénticos antes/después,
+  otro arranque y archivo persistente correctos. VM apagada al finalizar.
+- No se probó suspensión del Mac, instalación gráfica, firma/notarización de Voxy,
+  carpetas compartidas, Docker o Lupa dentro de la VM.
+
+### Regresión Linux x86_64
+
+El launcher nuevo completó `./voxy init` y `./voxy test` en Debian 13 con
+QEMU 10.0.13 y KVM: todos los pasos, incluida sincronización de kernel, pasaron.
+Medición final: 57 MiB de RAM usados en el invitado y 276 MiB de disco ocupado.
+VM apagada al terminar. Estos valores varían y no equivalen al RSS de QEMU.

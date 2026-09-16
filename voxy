@@ -1,117 +1,159 @@
 #!/usr/bin/env bash
+# Compatible with the Bash 3.2 shipped by macOS.
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-cd "$ROOT"
-source "$ROOT/image.lock"
-CACHE="$ROOT/.cache"
-STATE="$ROOT/.runtime"
-PORT=22222
-BASE="$CACHE/debian.qcow2"
-DISK="$STATE/debian.qcow2"
-mkdir -p "$CACHE" "$STATE"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:$PATH"
+OS=$(uname -s)
+case $(uname -m) in arm64|aarch64) NATIVE=arm64;; x86_64) NATIVE=amd64;; *) echo 'CPU no soportada' >&2; exit 1;; esac
+ARCH=${VOXY_ARCH:-$NATIVE}
+case "$ARCH" in arm64|amd64) ;; *) echo 'VOXY_ARCH debe ser arm64 o amd64' >&2; exit 1;; esac
+case "$OS" in Darwin) DEFAULT_DATA="$HOME/Library/Application Support/Voxy/$ARCH";; Linux) DEFAULT_DATA="$ROOT/.runtime/native-$ARCH";; *) echo 'Este launcher requiere macOS o Linux' >&2; exit 1;; esac
+STATE=${VOXY_DATA_DIR:-$DEFAULT_DATA}
+mkdir -p "$STATE"
+STATE=$(cd "$STATE" && pwd)
 chmod 700 "$STATE"
-ssh_vm() {
-  ssh -i "$STATE/id_ed25519" -p "$PORT" -o IdentitiesOnly=yes -o BatchMode=yes \
-    -o ConnectTimeout=3 -o StrictHostKeyChecking=accept-new \
-    -o UserKnownHostsFile="$STATE/known_hosts" voxy@127.0.0.1 "$@"
-}
+case "$STATE" in *,*) echo 'La ruta de datos no puede contener comas (sintaxis QEMU)' >&2; exit 1;; esac
+source "$ROOT/images/$ARCH.lock"
+PORT=${VOXY_SSH_PORT:-22222}
+RAM=${VOXY_RAM_MB:-512}
+CPUS=${VOXY_CPUS:-1}
+for value in "$PORT" "$RAM" "$CPUS"; do case "$value" in ''|*[!0-9]*) echo 'Puerto, RAM y CPU deben ser enteros positivos' >&2; exit 1;; esac; done
+(( PORT > 0 && PORT < 65536 && RAM >= 256 && CPUS > 0 )) || { echo 'Recursos o puerto fuera de rango' >&2; exit 1; }
+if [[ "$ARCH" = arm64 ]]; then QEMU=qemu-system-aarch64; else QEMU=qemu-system-x86_64; fi
+accel=${VOXY_ACCEL:-auto}
+if [[ "$accel" = auto ]]; then
+  if [[ "$OS" = Darwin && "$ARCH" = "$NATIVE" ]]; then accel=hvf
+  elif [[ "$OS" = Linux && "$ARCH" = "$NATIVE" && -r /dev/kvm && -w /dev/kvm ]]; then accel=kvm
+  else accel=tcg; fi
+fi
+case "$accel" in hvf|kvm|tcg) ;; *) echo 'VOXY_ACCEL debe ser auto, hvf, kvm o tcg' >&2; exit 1;; esac
 running() {
   [[ -f "$STATE/qemu.pid" ]] || return 1
-  local pid
+  local pid command
   read -r pid < "$STATE/qemu.pid"
-  [[ "$pid" =~ ^[0-9]+$ && -r "/proc/$pid/cmdline" ]] || return 1
-  grep -zFq -- "$DISK" "/proc/$pid/cmdline"
+  case "$pid" in ''|*[!0-9]*) return 1;; esac
+  command=$(ps -p "$pid" -o command= 2>/dev/null) || return 1
+  [[ "$command" == *"-name voxy-$ARCH "* && "$command" == *"file=$STATE/disk.qcow2,"* ]]
 }
-fetch() {
-  if [[ ! -f "$BASE" ]]; then
-    curl --fail --location --retry 3 "$IMAGE_URL" -o "$BASE.part"
-    printf '%s  %s\n' "$IMAGE_SHA512" "$BASE.part" | sha512sum -c -
-    mv "$BASE.part" "$BASE"
-    chmod 444 "$BASE"
-  else
-    printf '%s  %s\n' "$IMAGE_SHA512" "$BASE" | sha512sum -c -
-  fi
+ssh_vm() {
+  local port=$PORT
+  if running && [[ -f "$STATE/ssh-port" ]]; then read -r port < "$STATE/ssh-port"; fi
+  ssh -i "$STATE/id_ed25519" -p "$port" -o IdentitiesOnly=yes -o BatchMode=yes \
+    -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+    -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$STATE/known_hosts" \
+    root@127.0.0.1 "$@"
 }
 init() {
-  [[ ! -f "$DISK" ]] || { echo 'VM ya inicializada'; return; }
-  fetch
-  [[ -f "$STATE/id_ed25519" ]] || ssh-keygen -q -t ed25519 -N '' -f "$STATE/id_ed25519"
-  cat > "$STATE/user-data" <<CLOUD
-#cloud-config
-hostname: voxy
-manage_etc_hosts: true
-users:
-  - name: voxy
-    groups: [sudo]
-    shell: /bin/bash
-    sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    lock_passwd: true
-    ssh_authorized_keys:
-      - $(cat "$STATE/id_ed25519.pub")
-ssh_pwauth: false
-disable_root: true
-package_update: false
-runcmd:
-  - [systemctl, set-default, multi-user.target]
-CLOUD
-  printf 'instance-id: voxy-%s\nlocal-hostname: voxy\n' "$(date +%s)" > "$STATE/meta-data"
-  cloud-localds "$STATE/seed.img" "$STATE/user-data" "$STATE/meta-data"
-  qemu-img create -f qcow2 -F qcow2 -b "$BASE" "$DISK" 8G
+  [[ ! -e "$STATE/disk.qcow2" ]] || { echo 'Ya existe una VM; no se sobrescribe' >&2; return 1; }
+  local stage
+  stage=$(mktemp -d "$STATE/.download.XXXXXX")
+  if ! curl -fL --retry 3 "$IMAGE_URL" -o "$stage/image.tar.xz"; then rm -rf "$stage"; return 1; fi
+  if ! (cd "$stage" && printf '%s  image.tar.xz\n' "$IMAGE_SHA256" | shasum -a 256 -c -); then rm -rf "$stage"; return 1; fi
+  if ! tar -xJf "$stage/image.tar.xz" -C "$stage"; then rm -rf "$stage"; return 1; fi
+  # Only import the verified guest artifacts. Voxy owns the host launcher.
+  for file in kernel initramfs disk.qcow2; do
+    [[ -s "$stage/$IMAGE_DIRECTORY/$file" ]] || { rm -rf "$stage"; return 1; }
+  done
+  for file in kernel initramfs disk.qcow2; do mv "$stage/$IMAGE_DIRECTORY/$file" "$STATE/$file"; done
+  rm -rf "$stage"
+  echo "Debian $ARCH instalado en $STATE"
 }
 start() {
   running && { echo 'Voxy ya está encendido'; return; }
-  [[ -f "$DISK" ]] || init
-  local accel=${VOXY_ACCEL:-kvm}
-  [[ "$accel" == kvm || "$accel" == tcg ]] || { echo 'VOXY_ACCEL debe ser kvm o tcg' >&2; exit 1; }
-  qemu-system-x86_64 -name voxy -machine q35 -accel "$accel" \
-    -m 768 -smp 1 -display none -monitor none \
-    -drive "file=$DISK,format=qcow2,if=virtio" \
-    -drive "file=$STATE/seed.img,format=raw,if=virtio,readonly=on" \
-    -device virtio-net-pci,netdev=net0 \
-    -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:$PORT-:22" \
-    -serial "file:$STATE/serial.log" -pidfile "$STATE/qemu.pid" -daemonize 9>&-
+  for file in kernel initramfs disk.qcow2; do [[ -s "$STATE/$file" ]] || { echo 'Ejecuta ./voxy init primero' >&2; return 1; }; done
+  command -v "$QEMU" >/dev/null || { echo "Falta $QEMU; consulta ./scripts/install-macos.sh" >&2; return 1; }
+  [[ -f "$STATE/id_ed25519" ]] || ssh-keygen -q -t ed25519 -N '' -f "$STATE/id_ed25519"
+  ssh-keygen -y -f "$STATE/id_ed25519" > "$STATE/authorized_keys"
+  local cpu=max machine=q35 console=ttyS0
+  if [[ "$accel" != tcg ]]; then cpu=host; fi
+  if [[ "$ARCH" = arm64 ]]; then machine=virt,highmem=off; console=ttyAMA0; fi
+  "$QEMU" -name "voxy-$ARCH" -machine "$machine" -cpu "$cpu" -accel "$accel" \
+    -m "$RAM" -smp "$CPUS" -kernel "$STATE/kernel" -initrd "$STATE/initramfs" \
+    -append "console=$console root=/dev/vda rootfstype=ext4 rw quiet" \
+    -drive "file=$STATE/disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap" \
+    -device virtio-blk-pci,drive=rootdisk -device virtio-rng-pci \
+    -fw_cfg "name=opt/vm/ssh-key,file=$STATE/authorized_keys" \
+    -netdev "user,id=net,hostfwd=tcp:127.0.0.1:$PORT-:22" \
+    -device virtio-net-pci,netdev=net,romfile= \
+    -display none -monitor none -serial "file:$STATE/serial.log" \
+    -pidfile "$STATE/qemu.pid" -daemonize
+  printf '%s\n' "$PORT" > "$STATE/ssh-port"
   printf '%s\n' "$accel" > "$STATE/accelerator"
-  echo "Voxy iniciado ($accel); SSH 127.0.0.1:$PORT"
+  echo "Voxy $ARCH iniciado ($accel); SSH 127.0.0.1:$PORT"
 }
 wait_ready() {
+  local i
   for ((i=0;i<120;i++)); do
-    running || { echo 'QEMU no está ejecutándose' >&2; return 1; }
-    if ssh_vm 'test -f /var/lib/cloud/instance/boot-finished' >/dev/null 2>&1; then return; fi
+    running || { echo "QEMU no está ejecutándose; revisa $STATE/serial.log" >&2; return 1; }
+    if ssh_vm 'systemctl is-active --quiet vm-prepare ssh' >/dev/null 2>&1; then return; fi
     sleep 2
   done
-  echo "El invitado no estuvo listo a tiempo; revisa $STATE/serial.log" >&2
-  return 1
+  echo 'Tiempo de espera de SSH agotado' >&2; return 1
 }
 stop() {
   running || { echo 'Voxy apagado'; return; }
-  ssh_vm 'sudo systemctl poweroff' || true
-  for ((i=0;i<60;i++)); do
+  ssh_vm 'systemctl --no-block --no-wall start poweroff.target' || return 1
+  local i
+  for ((i=0;i<120;i++)); do
     running || { echo 'Voxy apagado'; return; }
     sleep 1
   done
-  echo 'No se confirmó el apagado; no se forzó la terminación.' >&2
-  return 1
+  echo 'No se confirmó el apagado; no se forzó la terminación' >&2; return 1
 }
-# Serializa los cambios sobre el disco y el proceso.
+resize() {
+  running && { echo 'Apaga primero la VM' >&2; return 1; }
+  [[ "${1:-}" =~ ^[1-9][0-9]*[MGT]$ ]] || { echo 'Uso: ./voxy resize 8G' >&2; return 1; }
+  qemu-img resize -f qcow2 "$STATE/disk.qcow2" "$1"
+}
+sync_kernel() {
+  running || { echo 'Inicia la VM antes de sincronizar el kernel' >&2; return 1; }
+  ssh_vm 'cat /vmlinuz' > "$STATE/kernel.next"
+  ssh_vm 'cat /initrd.img' > "$STATE/initramfs.next"
+  if gzip -t "$STATE/kernel.next" 2>/dev/null; then
+    gzip -dc "$STATE/kernel.next" > "$STATE/kernel.uncompressed"
+    mv "$STATE/kernel.uncompressed" "$STATE/kernel.next"
+  fi
+  [[ -s "$STATE/kernel.next" && -s "$STATE/initramfs.next" ]]
+  mv "$STATE/kernel.next" "$STATE/kernel"
+  mv "$STATE/initramfs.next" "$STATE/initramfs"
+  echo 'Kernel e initramfs sincronizados'
+}
+test_vm() {
+  running && { echo 'Apaga la VM antes de probar' >&2; return 1; }
+  [[ $(LC_ALL=C qemu-img info "$STATE/disk.qcow2" | sed -n 's/^virtual size:.*(\([0-9][0-9]*\) bytes).*$/\1/p') = 1073741824 ]] || { echo 'El test necesita una copia de 1 GiB; la ampliará a 2 GiB' >&2; return 1; }
+  start
+  wait_ready
+  local before after expected=x86_64
+  [[ "$ARCH" != arm64 ]] || expected=aarch64
+  ssh_vm "test \"\$(uname -m)\" = $expected"
+  ssh_vm 'set -eu; . /etc/os-release; test "$ID" = debian; test "$VERSION_ID" = 12; ! command -v docker; hostname; uname -m; getent hosts deb.debian.org; apt-get -o APT::Update::Error-Mode=any update -qq; echo voxy-persistence > /root/voxy-test; test -z "$(systemctl --failed --no-legend --plain)"'
+  (cd "$STATE" && shasum -a 256 kernel initramfs) > "$STATE/kernel-before.txt"
+  sync_kernel
+  (cd "$STATE" && shasum -a 256 kernel initramfs) > "$STATE/kernel-after.txt"
+  cmp "$STATE/kernel-before.txt" "$STATE/kernel-after.txt"
+  before=$(ssh_vm cat /proc/sys/kernel/random/boot_id)
+  if resize 2G; then echo 'ERROR: resize con VM encendida'; return 1; fi
+  stop
+  qemu-img check "$STATE/disk.qcow2"
+  resize 2G
+  if resize 1G; then echo 'ERROR: reducción permitida'; return 1; fi
+  start
+  wait_ready
+  after=$(ssh_vm cat /proc/sys/kernel/random/boot_id)
+  [[ "$before" != "$after" ]]
+  ssh_vm 'set -eu; test "$(cat /root/voxy-test)" = voxy-persistence; test "$(df -kP / | awk "NR==2 {print \$2}")" -gt 1900000; test -z "$(systemctl --failed --no-legend --plain)"; free -m; df -h /'
+  stop
+  qemu-img check "$STATE/disk.qcow2"
+  echo "PASS: $OS $ARCH $(cat "$STATE/accelerator"); SSH, APT, disco y persistencia"
+}
 case "${1:-help}" in
-  fetch|init|start|stop|test) exec 9>"$STATE/control.lock"; flock -n 9 || { echo 'Otra operación está en curso' >&2; exit 1; };;
+  init|start|stop|resize|sync-kernel|test)
+    mkdir "$STATE/control.lock" 2>/dev/null || { echo "Otra operación está activa. Si terminó inesperadamente, revisa antes de retirar $STATE/control.lock" >&2; exit 1; }
+    trap 'rmdir "$STATE/control.lock"' EXIT;;
 esac
 case "${1:-help}" in
-  fetch) fetch;;
-  init) init;;
-  start) start;;
-  wait) wait_ready;;
-  ssh) shift; ssh_vm "$@";;
-  stop) stop;;
-  status) if running; then echo "Voxy encendido ($(cat "$STATE/accelerator")); PID $(cat "$STATE/qemu.pid")"; else echo 'Voxy apagado'; fi;;
-  test)
-    start
-    wait_ready
-    ssh_vm 'set -eu; . /etc/os-release; test "$ID" = debian; test "$VERSION_ID" = 13; test "$(uname -m)" = x86_64; sudo cloud-init status --wait; getent hosts deb.debian.org; ! command -v docker; test "$(systemctl get-default)" = multi-user.target; echo persistencia-voxy | sudo tee /var/lib/voxy-test; cat /etc/debian_version; free -m; df -h /'
-    stop
-    start
-    wait_ready
-    ssh_vm 'test "$(cat /var/lib/voxy-test)" = persistencia-voxy && echo "PASS: Debian 13, SSH, DNS y persistencia tras reinicio"'
-    ;;
-  *) echo 'Uso: ./voxy {fetch|init|start|wait|ssh [comando]|status|stop|test}';;
+  init) init;; start) start;; wait) wait_ready;; stop) stop;;
+  ssh) shift; ssh_vm "$@";; resize) shift; resize "$@";; sync-kernel) sync_kernel;; test) test_vm;;
+  status) if running; then echo "Voxy $ARCH encendido ($(cat "$STATE/accelerator"))"; else echo "Voxy $ARCH apagado"; fi;;
+  *) echo 'Uso: ./voxy {init|start|wait|ssh [comando]|status|stop|resize TAMAÑO|sync-kernel|test}';;
 esac

@@ -1,0 +1,3 @@
+IMAGE_URL=https://github.com/bunxdev/qemu-debian-amd/releases/download/v0.1.0/debian-amd64-min.tar.xz
+IMAGE_SHA256=748e6a7b184c7f4093ed8c64bb522ca68272a303917eb0cfa92c8940d1f51092
+IMAGE_DIRECTORY=debian-amd64-min

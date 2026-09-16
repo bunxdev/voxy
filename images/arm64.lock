@@ -1,0 +1,3 @@
+IMAGE_URL=https://github.com/bunxdev/qemu-debian-arm/releases/download/v0.1.1/debian-arm64-min.tar.xz
+IMAGE_SHA256=64438786232688a0b68faf83f2f8014b57688c68759505fc63d8641cbdf44375
+IMAGE_DIRECTORY=debian-arm64-min
