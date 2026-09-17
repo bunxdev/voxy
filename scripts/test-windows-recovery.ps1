@@ -54,6 +54,7 @@ try {
  Run stop
  if($TestSchedule){
   Remove-Item Env:VOXY_AUTO_BACKUP
+  '{"periodic":true,"interval_minutes":10}' | Set-Content -Encoding ASCII "$env:VOXY_DATA_DIR\backup-settings.json"
   $previous=(Points)[-1].Name
   Run start;Run wait
   $initialDeadline=(Get-Date).AddMinutes(3)

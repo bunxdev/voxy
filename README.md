@@ -21,6 +21,17 @@ Las dos Macs usan QEMU 11.1.1. Los paquetes `.dmg` incluyen `Voxy.app`, QEMU,
 sus bibliotecas y Debian 12. La aplicación abre un panel en Terminal.
 También se puede instalar desde el código fuente con Homebrew o MacPorts.
 
+## Versiones disponibles
+
+| Plataforma | Último paquete publicado |
+| --- | --- |
+| Windows x64 | **0.4.1** — copia inicial y copias periódicas opcionales |
+| macOS Intel y Apple Silicon | **0.2.0** — los DMG actuales |
+| Linux | Instalación desde el código fuente |
+
+Los paquetes de cada plataforma avanzan por separado. Las copias de recuperación
+descritas para Windows todavía no están implementadas en macOS ni Linux.
+
 ## Descargar para Mac
 
 Versión experimental [v0.2.0](https://github.com/bunxdev/voxy/releases/tag/v0.2.0):
@@ -50,11 +61,12 @@ Construcción y verificación: [packaging/macos/README.md](packaging/macos/READM
 
 ## Descargar para Windows x64
 
-[ZIP portátil v0.4.0](https://github.com/bunxdev/voxy/releases/download/v0.4.0/Voxy-0.4.0-windows-x64.zip)
+[ZIP portátil v0.4.1](https://github.com/bunxdev/voxy/releases/download/v0.4.1/Voxy-0.4.1-windows-x64.zip)
 con `Voxy.exe`, QEMU 11.1.0, sus 104 DLL y Debian 12. No necesita Bash ni instalar
 QEMU/OpenSSH. **Probado en Windows 10 Home 22H2 con WHPX**, además de las pruebas previas con Wine + TCG.
-La versión 0.4.0 añade puntos de recuperación automáticos cada 10 minutos con
-escrituras y conserva tres copias independientes. Mantiene las correcciones de terminal.
+La versión 0.4.1 crea por defecto **solo una copia inicial al arrancar**. La opción 9
+del menú permite activar copias periódicas y elegir de 1 a 10080 minutos.
+Conserva tres copias independientes y las correcciones de terminal.
 
 1. Extrae todo el ZIP y abre `Voxy.exe`.
 2. Para WHPX, habilita **Plataforma de hipervisor de Windows** desde
@@ -333,7 +345,7 @@ que distribuyamos, no solo contra la documentación de desarrollo.
   y tamaño, manteniendo las funciones de la configuración de Voxy.
 - [ ] Probar Windows Firewall, Defender, VPN y coexistencia con WSL2/Hyper-V;
   mantener SSH/API/CDP en loopback salvo configuración explícita del usuario.
-- [x] Copias independientes cada 10 minutos con escrituras, retención de tres puntos y restauración con diario en Windows.
+- [x] Copia inicial en Windows; copias periódicas opcionales con intervalo configurable, retención de tres puntos y restauración con diario.
 - [x] Probar cierre brusco de QEMU, interrupción de copia y desconexión SSH en una VM separada.
 - [ ] Probar corte eléctrico real, suspensión/reanudación y recuperación en más equipos.
 - [ ] Crear instalador `.exe` o `.msi`, firma de código, actualización y desinstalación

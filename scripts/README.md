@@ -78,3 +78,9 @@ Para generar y comprobar esos paquetes desde macOS, consulta
 
 Consulta [la guía Windows](../packaging/windows/README.md). Las pruebas con Wine
 no sustituyen la validación WHPX, permisos y seguridad en Windows real.
+- `test-windows-backup-settings.ps1 -Exe C:\Voxy\Voxy.exe`: VM WHPX aislada para
+  verificar copia inicial, periodicidad opcional, intervalo configurable desde el
+  menú, persistencia y restauración. Probado con Windows 0.4.1.
+- `test-windows-recovery.ps1 -Exe C:\Voxy\Voxy.exe`: pruebas de interrupción y
+  recuperación; `-TestSchedule` activa expresamente el intervalo de 10 minutos
+  dentro de su VM de prueba.

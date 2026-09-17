@@ -323,3 +323,64 @@ arranque automático de Windows. [Operación y límites](docs/RECOVERY.md).
 
 Artefacto: `Voxy-0.4.0-windows-x64.zip`, **157684368 bytes**.
 SHA-256: `91c6c17fc28e98ee4030c650441056c471882a3ff0318ab6c79601dfc7904c15`.
+
+## 0.4.1 — copias periódicas opcionales
+
+El valor predeterminado conserva solo el intento de copia inicial. El menú permite
+activar/desactivar las periódicas y persistir un intervalo de 1 a 10080 minutos.
+Pruebas nuevas ejecutadas con el binario Windows bajo Wine: copia inicial con
+periodicidad desactivada, límite exacto del intervalo, persistencia, desactivación
+y rechazo de entradas inválidas/configuración corrupta. Compilación Windows x64 correcta.
+La suite completa pasó 12 pruebas; dos pruebas previas no se pudieron completar
+en este entorno Wine: socket AF_UNIX (error 10047) y AllocConsole (Access denied).
+La validación posterior en Windows real se detalla abajo. La instalación habitual
+remota no se ha reemplazado.
+
+### Validación nativa adicional (2026-09-16)
+
+La suite Go completa de 0.4.1 pasó **14/14** pruebas en Windows 10 real,
+incluidas AF_UNIX/QMP y representación ANSI de consola que Wine no pudo ejecutar.
+El ejecutable probado coincide con el del ZIP 0.4.1:
+`9c3553f7c42c13d878ca5efa1c245c06dd5fbdd4c06f51f3f0791b50fb2373c4`.
+
+La prueba de comportamiento real está en
+`scripts/test-windows-backup-settings.ps1`: usa una VM WHPX y directorio únicos,
+comprueba la ausencia de copias durante más de 10 minutos con cambios en disco,
+activa/cambia/desactiva la periodicidad desde el menú, verifica la persistencia
+tras reiniciar Debian y restaura una copia programada para comprobar su contenido.
+
+Resultado de integración: **PASS**, 2026-09-16 10:05:33 UTC, Windows 10 + WHPX.
+
+- Copia inicial completa y verificada.
+- 620 segundos con escrituras nuevas, sin otra copia ni trabajo parcial, usando
+  la configuración predeterminada (sin archivo de preferencias).
+- Activación desde la opción 9 del menú con intervalo de 1 minuto, sin reiniciar.
+- Cambio en vivo a 2 minutos: siguiente inicio de copia 155,83 segundos después
+  del inicio anterior (unos 36 segundos de copia más 120 segundos de intervalo).
+- Desactivación desde el menú y 145 segundos adicionales con escrituras, sin copia.
+- Copia manual disponible con periodicidad desactivada.
+- Preferencia desactivada conservada al reiniciar Debian; nueva copia inicial creada.
+- Restauración de la copia programada recuperó el marcador `TWO_MINUTES` esperado.
+- VM de prueba apagada al finalizar; la VM habitual no fue reiniciada ni actualizada.
+
+Registro local completo: `.cache/windows-native/settings-integration-041.log`.
+
+### Actualización de la instalación habitual (2026-09-17)
+
+Instalado 0.4.1 en Windows 10 sobre la VM existente con WHPX. Los 132 archivos
+coinciden con el manifiesto del ZIP. Se conservó una copia de la instalación anterior.
+El proceso de copias 0.4.0 se sustituyó con el bloqueo de control adquirido, evitando
+interrumpir una copia. La VM mantuvo su PID y boot ID; las dos terminales SSH
+existentes y Docker siguieron activos. No fue necesario reiniciar Debian.
+
+Probados con el ejecutable instalado: diagnóstico, menú/opción 9, conexión SSH,
+resolución DNS, Docker cliente/servidor, escritura/lectura de un archivo temporal,
+continuidad tras desconectar SSH y copia manual completa verificada.
+La copia inicial del nuevo proceso conservó el último punto porque no había
+escrituras nuevas. La copia manual posterior terminó correctamente a las 09:14:45 UTC.
+Las copias periódicas quedaron desactivadas en la configuración persistente.
+Los paneles que ya estaban abiertos mantienen su ejecutable anterior en memoria:
+para ver el menú nuevo, salir del panel y abrir `Voxy/app/Voxy/Voxy.exe`.
+
+Registros locales: `.cache/windows-native/install-live-041.log`,
+`verify-live-041.log`, `post-live-041.log` y `live-backup-041.log`.
