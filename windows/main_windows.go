@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.5.0"
+const version = "0.6.0"
 
 type app struct {
 	noAutoBackup       bool
@@ -40,6 +40,7 @@ type runState struct {
 	Executable  string
 	Port        int
 	Accelerator string
+	Ports       []portRule
 }
 
 func env(key, fallback string) string {
@@ -268,6 +269,10 @@ func (a *app) start() error {
 		fmt.Println("Voxy ya está encendido")
 		return a.startBackupWorker()
 	}
+	rules, e := a.loadPorts()
+	if e != nil {
+		return e
+	}
 	if e = a.applyRestore(); e != nil {
 		return e
 	}
@@ -306,7 +311,7 @@ func (a *app) start() error {
 	}
 	// CreateProcessW sets a Unicode working directory. Relative ASCII filenames
 	// avoid this QEMU build's narrow Win32 file-path conversion for accented names.
-	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap,cache=writeback", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", fmt.Sprintf("user,id=net,hostfwd=tcp:127.0.0.1:%d-:22", a.port), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-qmp", "unix:qmp.sock,server=on,wait=off", "-serial", "file:serial.log"}
+	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap,cache=writeback", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", portNetdev(a.port, rules), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-qmp", "unix:qmp.sock,server=on,wait=off", "-serial", "file:serial.log"}
 	if accel == "tcg" {
 		args = append(args, "-cpu", "max")
 	}
@@ -328,7 +333,7 @@ func (a *app) start() error {
 		_ = cmd.Wait()
 		return a.qemuError("QEMU no inició")
 	}
-	r := runState{uint32(cmd.Process.Pid), created, exe, a.port, accel}
+	r := runState{PID: uint32(cmd.Process.Pid), Created: created, Executable: exe, Port: a.port, Accelerator: accel, Ports: rules}
 	if e = writeJSON(a.path("process.json"), r); e != nil {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
@@ -670,6 +675,10 @@ func (a *app) status() error {
 		fmt.Println("Voxy apagado")
 	}
 	fmt.Println("Datos:", a.state)
+	if alive && len(r.Ports) > 0 {
+		fmt.Println("Puertos activos:")
+		printPorts(r.Ports)
+	}
 	if os.Getenv("VOXY_AUTO_BACKUP") == "0" {
 		fmt.Println("Copias automáticas desactivadas en esta sesión")
 	} else {
@@ -715,6 +724,13 @@ func (a *app) doctor() error {
 }
 func (a *app) dispatch(args []string) error {
 	action := args[0]
+	if action == "ports" && len(args) > 1 && args[1] != "list" {
+		unlock, err := a.lock("control")
+		if err != nil {
+			return err
+		}
+		defer unlock()
+	}
 	switch action {
 	case "init", "start", "stop", "resize", "sync-kernel", "restore":
 		unlock, e := a.lock("control")
@@ -736,6 +752,8 @@ func (a *app) dispatch(args []string) error {
 		return a.status()
 	case "doctor":
 		return a.doctor()
+	case "ports":
+		return a.ports(args[1:])
 	case "resize":
 		if len(args) != 2 {
 			return errors.New("Uso: Voxy.exe resize 8G")
@@ -762,7 +780,7 @@ func (a *app) dispatch(args []string) error {
 	case "test":
 		return a.testVM()
 	default:
-		return errors.New("Uso: Voxy.exe {init|start|wait|ssh [comando]|status|stop|resize 8G|sync-kernel|doctor|backup|backups|restore ID|test}")
+		return errors.New("Uso: Voxy.exe {init|start|wait|ssh [comando]|status|stop|resize 8G|sync-kernel|doctor|backup|backups|restore ID|ports [operación]|test}")
 	}
 }
 func (a *app) menu() {
@@ -771,7 +789,7 @@ func (a *app) menu() {
 	for {
 		fmt.Println()
 		_ = a.status()
-		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n6) Crear punto de recuperación\n7) Ver puntos de recuperación\n8) Restaurar un punto (VM apagada)\n9) Configurar copias periódicas\n> ")
+		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n6) Crear punto de recuperación\n7) Ver puntos de recuperación\n8) Restaurar un punto (VM apagada)\n9) Configurar copias periódicas\n10) Configurar puertos\n> ")
 		line, e := reader.ReadString('\n')
 		if e != nil {
 			return
@@ -800,6 +818,8 @@ func (a *app) menu() {
 			err = a.listBackups()
 		case "9":
 			err = a.configureBackups(reader)
+		case "10":
+			err = a.configurePorts(reader)
 		case "8":
 			_ = a.listBackups()
 			fmt.Print("ID a restaurar (Enter cancela): ")

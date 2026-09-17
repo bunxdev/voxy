@@ -160,3 +160,9 @@ la API Unicode de Windows y pasa nombres relativos ASCII para disco, kernel,
 claves y logs. Copia el pequeño firmware PC a `firmware/` dentro del directorio de
 datos; `qemu-img` también opera desde ese directorio. La ruta del ejecutable y
 las operaciones propias del launcher siguen usando las API Unicode de Go/Windows.
+
+## Reenvío de puertos en 0.6.0
+
+Opción 10 del panel, o `Voxy.exe ports add tcp 33033 33033 0.0.0.0`.
+Configuración por VM, conservada entre actualizaciones. Se aplica al apagar e
+iniciar Debian. [Guía de TCP/UDP, rangos, Tailscale y firewall](../../docs/PORTS.md).

@@ -73,3 +73,13 @@ ICONO Y ACCESO DIRECTO (0.5.0):
 Voxy.exe incluye el icono propio. Ejecuta Crear-acceso-directo.cmd una vez
 para crear Voxy en tu escritorio. Conserva la carpeta extraida en su ubicacion;
 si la mueves, recrea el acceso. El panel sigue siendo de consola.
+
+Reenvio de puertos (0.6.0): opcion 10 del panel.
+  .\Voxy.exe ports add tcp 33033 33033 0.0.0.0
+  .\Voxy.exe ports list
+  .\Voxy.exe stop
+  .\Voxy.exe start
+Sin IPv4 explicita escucha solo en 127.0.0.1.
+Configuracion persistente en ports.conf, junto al disco.
+TCP/UDP y rangos: hasta 256 asignaciones. Requiere permiso del firewall
+para acceso remoto. No modifica el firewall automaticamente.

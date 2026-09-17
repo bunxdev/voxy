@@ -21,6 +21,7 @@ chmod 700 "$STATE"
 case "$STATE" in *,*) echo 'La ruta de datos no puede contener comas (sintaxis QEMU)' >&2; exit 1;; esac
 source "$ROOT/images/$ARCH.lock"
 PORT=${VOXY_SSH_PORT:-22222}
+source "$ROOT/lib/ports.sh"
 RAM=${VOXY_RAM_MB:-512}
 CPUS=${VOXY_CPUS:-1}
 for value in "$PORT" "$RAM" "$CPUS"; do case "$value" in ''|*[!0-9]*) echo 'Puerto, RAM y CPU deben ser enteros positivos' >&2; exit 1;; esac; done
@@ -68,6 +69,9 @@ init() {
 }
 start() {
   running && { echo 'Voxy ya está encendido'; return; }
+  local port_rules
+  port_rules=$(ports_read) || return
+  ports_netdev "$port_rules"
   for file in kernel initramfs disk.qcow2; do [[ -s "$STATE/$file" ]] || { echo 'Ejecuta ./voxy init primero' >&2; return 1; }; done
   command -v "$QEMU" >/dev/null || { echo "Falta $QEMU; consulta ./scripts/install-macos.sh" >&2; return 1; }
   [[ -f "$STATE/id_ed25519" ]] || ssh-keygen -q -t ed25519 -N '' -f "$STATE/id_ed25519"
@@ -81,10 +85,11 @@ start() {
     -drive "file=$STATE/disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap" \
     -device virtio-blk-pci,drive=rootdisk -device virtio-rng-pci \
     -fw_cfg "name=opt/vm/ssh-key,file=$STATE/authorized_keys" \
-    -netdev "user,id=net,hostfwd=tcp:127.0.0.1:$PORT-:22" \
+    -netdev "$NETDEV" \
     -device virtio-net-pci,netdev=net,romfile= \
     -display none -monitor none -serial "file:$STATE/serial.log" \
-    -pidfile "$STATE/qemu.pid" -daemonize
+    -pidfile "$STATE/qemu.pid" -daemonize 2> "$STATE/qemu.log" || { cat "$STATE/qemu.log" >&2; return 1; }
+  printf '%s\n' "$port_rules" > "$STATE/ports.active"
   printf '%s\n' "$PORT" > "$STATE/ssh-port"
   printf '%s\n' "$accel" > "$STATE/accelerator"
   echo "Voxy $ARCH iniciado ($accel); SSH 127.0.0.1:$PORT"
@@ -155,13 +160,14 @@ test_vm() {
   echo "PASS: $OS $ARCH $(cat "$STATE/accelerator"); SSH, APT, disco y persistencia"
 }
 case "${1:-help}" in
-  init|start|stop|resize|sync-kernel|test)
+  init|start|stop|resize|sync-kernel|test|ports)
     mkdir "$STATE/control.lock" 2>/dev/null || { echo "Otra operación está activa. Si terminó inesperadamente, revisa antes de retirar $STATE/control.lock" >&2; exit 1; }
     trap 'rmdir "$STATE/control.lock"' EXIT;;
 esac
 case "${1:-help}" in
+  ports) shift; ports_command "$@";;
   init) init;; start) start;; wait) wait_ready;; stop) stop;;
   ssh) shift; ssh_vm "$@";; resize) shift; resize "$@";; sync-kernel) sync_kernel;; test) test_vm;;
   status) if running; then echo "Voxy $ARCH encendido ($(cat "$STATE/accelerator"))"; else echo "Voxy $ARCH apagado"; fi;;
-  *) echo 'Uso: ./voxy {init|start|wait|ssh [comando]|status|stop|resize TAMAÑO|sync-kernel|test}';;
+  *) echo 'Uso: ./voxy {init|start|wait|ssh [comando]|status|stop|resize TAMAÑO|sync-kernel|ports [operación]|test}';;
 esac

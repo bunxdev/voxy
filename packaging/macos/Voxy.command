@@ -6,7 +6,7 @@ printf 'Los datos se conservan en ~/Library/Application Support/Voxy.\n'
 while true; do
   printf '\n'
   ./voxy status
-  printf '\n1) Iniciar Debian\n2) Abrir terminal Debian\n3) Apagar Debian\n4) Cerrar panel (la VM continúa si está encendida)\n> '
+  printf '\n1) Iniciar Debian\n2) Abrir terminal Debian\n3) Apagar Debian\n4) Cerrar panel (la VM continúa si está encendida)\n5) Configurar puertos\n> '
   IFS= read -r choice || exit 0
   case "$choice" in
     1) arch=$(uname -m); [ "$arch" != x86_64 ] || arch=amd64
@@ -16,6 +16,7 @@ while true; do
     2) ./voxy ssh -t;;
     3) ./voxy stop;;
     4) exit 0;;
-    *) printf 'Selecciona una opción del 1 al 4.\n';;
+    5) ./voxy ports menu;;
+    *) printf 'Selecciona una opción del 1 al 5.\n';;
   esac
 done
