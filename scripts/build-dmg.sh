@@ -4,20 +4,23 @@ set -euo pipefail
 export LC_ALL=C
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 [[ $(uname -s) = Darwin ]] || { echo 'Build on macOS'; exit 1; }
-VERSION=${VOXY_VERSION:-0.2.0}
+VERSION=${VOXY_VERSION:-$(cat "$ROOT/VERSION")}
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid package version'; exit 1; }
 case $(uname -m) in
   arm64) ARCH=arm64; TARGET=aarch64; PREFIX=/opt/homebrew; MIN_OS=15.0;;
   x86_64) ARCH=amd64; TARGET=x86_64; PREFIX=/opt/local; MIN_OS=13.0;;
   *) exit 1;;
 esac
 export PATH="$PREFIX/bin:$PATH"
-OUT="$ROOT/dist/macos-$ARCH"
+OUT="$ROOT/dist/macos-$ARCH-$VERSION"
 [[ ! -e "$OUT" ]] || { echo "Remove previous build directory explicitly: $OUT"; exit 1; }
 APP="$OUT/stage/Voxy.app"
 mkdir -p "$OUT/stage"
 osacompile -o "$APP" "$ROOT/packaging/macos/launcher.applescript"
 RES="$APP/Contents/Resources"
 mkdir -p "$RES/bin" "$RES/lib" "$RES/images" "$RES/share/qemu" "$RES/licenses"
+iconutil -c icns "$ROOT/assets/icons/Voxy.iconset" -o "$RES/Voxy.icns"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile Voxy.icns' "$APP/Contents/Info.plist"
 cp "$ROOT/voxy" "$RES/voxy"
 cp "$ROOT/packaging/macos/Voxy.command" "$RES/"
 chmod +x "$RES/voxy" "$RES/Voxy.command"
@@ -85,6 +88,7 @@ Debian package copyright notices: /usr/share/doc/*/copyright inside guest.
 SOURCES
 /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.bunxdev.voxy" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string $MIN_OS" "$APP/Contents/Info.plist"
 while IFS= read -r file; do codesign --force --sign - "$file"; done < "$OUT/queue"
 codesign --force --sign - --entitlements "$ROOT/packaging/macos/hypervisor.plist" "$RES/bin/qemu-system-$TARGET"

@@ -14,11 +14,11 @@ Después, desde la raíz del repositorio:
 
 ```sh
 bash scripts/build-dmg.sh
-bash scripts/test-dmg.sh dist/Voxy-0.2.0-macos-arm64.dmg  # o amd64
+bash scripts/test-dmg.sh dist/Voxy-0.5.0-macos-arm64.dmg  # o amd64
 ```
 
 La construcción requiere Internet y rechaza sobrescribir su directorio de trabajo.
-Para reconstruir, mueve o elimina explícitamente `dist/macos-<arquitectura>` y el
+Para reconstruir, mueve o elimina explícitamente `dist/macos-<arquitectura>-0.5.0` y el
 DMG anterior. Se genera un paquete nativo por Mac; no es un binario universal.
 Las dependencias proceden del gestor instalado: no es una construcción reproducible
 bit a bit ni una promesa de compatibilidad con otras versiones de esos paquetes.
@@ -26,6 +26,9 @@ bit a bit ni una promesa de compatibilidad con otras versiones de esos paquetes.
 El script:
 
 - Compila el launcher AppleScript como `.app`.
+- Convierte `assets/icons/Voxy.iconset` con `iconutil` y registra `Voxy.icns`
+  en `CFBundleIconFile`. La versión se toma de `VERSION`.
+- El icono identifica Voxy en Finder; el panel abierto continúa usando Terminal.
 - Descarga la imagen limpia fijada en `images/*.lock` y comprueba SHA-256.
 - Copia únicamente el emulador nativo, `qemu-img` y sus bibliotecas transitivas.
 - Reescribe referencias de bibliotecas relativas al paquete con `install_name_tool`.

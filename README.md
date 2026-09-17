@@ -21,25 +21,30 @@ Las dos Macs usan QEMU 11.1.1. Los paquetes `.dmg` incluyen `Voxy.app`, QEMU,
 sus bibliotecas y Debian 12. La aplicación abre un panel en Terminal.
 También se puede instalar desde el código fuente con Homebrew o MacPorts.
 
+![Icono de Voxy](assets/icons/Voxy.iconset/icon_128x128.png)
+
+El icono identifica el ejecutable y acceso directo en Windows y `Voxy.app` en
+macOS. El panel sigue abriéndose en la terminal del sistema.
+
 ## Versiones disponibles
 
 | Plataforma | Último paquete publicado |
 | --- | --- |
-| Windows x64 | **0.4.1** — copia inicial y copias periódicas opcionales |
-| macOS Intel y Apple Silicon | **0.2.0** — los DMG actuales |
+| Windows x64 | **0.5.0** — icono propio, acceso directo y copias opcionales |
+| macOS Intel y Apple Silicon | **0.5.0** — icono propio en los DMG |
 | Linux | Instalación desde el código fuente |
 
-Los paquetes de cada plataforma avanzan por separado. Las copias de recuperación
+La versión 0.5.0 unifica el icono de Windows y macOS. Las copias de recuperación
 descritas para Windows todavía no están implementadas en macOS ni Linux.
 
 ## Descargar para Mac
 
-Versión experimental [v0.2.0](https://github.com/bunxdev/voxy/releases/tag/v0.2.0):
+Versión experimental [v0.5.0](https://github.com/bunxdev/voxy/releases/tag/v0.5.0):
 
 | Equipo | Descarga | Versión mínima de macOS |
 | --- | --- | --- |
-| Apple Silicon (ARM64) | [Voxy ARM64.dmg](https://github.com/bunxdev/voxy/releases/download/v0.2.0/Voxy-0.2.0-macos-arm64.dmg) | 15 |
-| Intel (AMD64/x86_64) | [Voxy Intel.dmg](https://github.com/bunxdev/voxy/releases/download/v0.2.0/Voxy-0.2.0-macos-amd64.dmg) | 13 |
+| Apple Silicon (ARM64) | [Voxy ARM64.dmg](https://github.com/bunxdev/voxy/releases/download/v0.5.0/Voxy-0.5.0-macos-arm64.dmg) | 15 |
+| Intel (AMD64/x86_64) | [Voxy Intel.dmg](https://github.com/bunxdev/voxy/releases/download/v0.5.0/Voxy-0.5.0-macos-amd64.dmg) | 13 |
 
 1. Descarga el paquete de tu arquitectura y abre el DMG.
 2. Arrastra **Voxy.app** a **Aplicaciones** y ábrela.
@@ -61,14 +66,15 @@ Construcción y verificación: [packaging/macos/README.md](packaging/macos/READM
 
 ## Descargar para Windows x64
 
-[ZIP portátil v0.4.1](https://github.com/bunxdev/voxy/releases/download/v0.4.1/Voxy-0.4.1-windows-x64.zip)
+[ZIP portátil v0.5.0](https://github.com/bunxdev/voxy/releases/download/v0.5.0/Voxy-0.5.0-windows-x64.zip)
 con `Voxy.exe`, QEMU 11.1.0, sus 104 DLL y Debian 12. No necesita Bash ni instalar
 QEMU/OpenSSH. **Probado en Windows 10 Home 22H2 con WHPX**, además de las pruebas previas con Wine + TCG.
-La versión 0.4.1 crea por defecto **solo una copia inicial al arrancar**. La opción 9
+La versión 0.5.0 mantiene por defecto **solo una copia inicial al arrancar**. La opción 9
 del menú permite activar copias periódicas y elegir de 1 a 10080 minutos.
 Conserva tres copias independientes y las correcciones de terminal.
 
-1. Extrae todo el ZIP y abre `Voxy.exe`.
+1. Extrae todo el ZIP en una carpeta estable y abre `Voxy.exe`.
+   Ejecuta `Crear-acceso-directo.cmd` para añadir el icono de Voxy al escritorio.
 2. Para WHPX, habilita **Plataforma de hipervisor de Windows** desde
    `optionalfeatures.exe` y reinicia si se solicita.
 3. Para probar emulación por software, abre `Voxy-TCG.cmd`.

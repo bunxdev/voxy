@@ -384,3 +384,29 @@ para ver el menú nuevo, salir del panel y abrir `Voxy/app/Voxy/Voxy.exe`.
 
 Registros locales: `.cache/windows-native/install-live-041.log`,
 `verify-live-041.log`, `post-live-041.log` y `live-backup-041.log`.
+
+## 0.5.0 — icono nativo en Windows y macOS (2026-09-17)
+
+Se generó un diseño común y se guardó su fuente PNG, ICO multirresolución e iconset
+macOS en `assets/icons`. El prompt y la reconstrucción están documentados allí.
+El icono se incrusta en el EXE mediante rsrc v0.10.2 y en la app mediante iconutil
+más CFBundleIconFile, antes de la firma ad-hoc.
+
+- Windows 10: extracción nativa del icono del EXE a 16, 32, 48 y 256 px correcta;
+  inspección visual de la imagen extraída a 256 px. El ejecutable del ZIP pasó
+  el ciclo completo WHPX: SSH, DNS/APT, kernel, ampliación del disco, persistencia,
+  integridad QCOW2 y apagado en una VM separada.
+- Mac Intel y M1: ambos DMG se verificaron, montaron y probaron con `test-dmg.sh`.
+  Pasaron firmas, dependencias internas, inicialización sin descarga, HVF, SSH,
+  APT, ampliación del disco, persistencia, integridad y apagado.
+- En ambas Macs se verificaron CFBundleIconFile, versión 0.5.0 e iconutil, y se
+  instalaron las apps en `/Applications/Voxy.app` conservando las anteriores.
+  La apertura mediante LaunchServices se completó correctamente.
+- Windows: instalación actualizada, 135 archivos verificados contra SHA256SUMS,
+  acceso Voxy en el escritorio con destino e icono apuntando a Voxy.exe. La VM
+  habitual mantuvo su PID, Docker y las dos terminales. Periodicidad desactivada.
+
+La interfaz sigue siendo un panel de terminal. Este cambio no añade GUI propia,
+notarización de Apple ni firma Authenticode. El icono de la ventana de terminal
+puede depender de Terminal/Windows Terminal. Las copias de recuperación siguen
+siendo una función del lanzador Windows; no se portaron a macOS en esta versión.

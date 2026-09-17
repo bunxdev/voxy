@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.4.1"
+const version = "0.5.0"
 
 type app struct {
 	noAutoBackup       bool

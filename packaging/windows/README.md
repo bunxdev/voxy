@@ -5,14 +5,15 @@ La entrega actual es un **ZIP portátil**, con `Voxy.exe`, QEMU, sus DLL y Debia
 Windows para procesos, permisos y detección de WHPX. El cliente SSH está integrado;
 no necesita Bash, PowerShell para operar ni OpenSSH instalado.
 
-**Objetivo:** Windows 10 2004+ / Windows 11 x64. La versión 0.4.1 está probada en Windows 10 Home 22H2, build 19045, con WHPX.
+**Objetivo:** Windows 10 2004+ / Windows 11 x64. La versión 0.5.0 está probada en Windows 10 Home 22H2, build 19045, con WHPX.
 La versión 0.3.0 también pasó pruebas con Wine 10 y TCG. Windows 11 sigue pendiente.
 Windows ARM64 queda fuera de esta entrega.
 
 ## Probar en Windows
 
-1. Descarga y extrae **todo** `Voxy-0.4.1-windows-x64.zip` en una carpeta local.
-2. Abre `Voxy.exe`. El menú permite iniciar, entrar a Debian por SSH y apagar.
+1. Descarga y extrae **todo** `Voxy-0.5.0-windows-x64.zip` en una carpeta local.
+2. Ejecuta `Crear-acceso-directo.cmd` para crear el acceso Voxy en el escritorio
+   (sin permisos de administrador), o abre directamente `Voxy.exe`. El menú permite iniciar, entrar a Debian por SSH y apagar.
 3. Para aceleración de hardware, habilita **Plataforma de hipervisor de Windows**
    desde `optionalfeatures.exe` y reinicia si Windows lo solicita. También requiere
    virtualización habilitada en el procesador/firmware. Voxy solo diagnostica;
@@ -60,7 +61,7 @@ SSH escucha solo en `127.0.0.1`. No hay API/CDP ni Docker/Lupa en esta base toda
 Cerrar el panel deja QEMU funcionando; usa `stop` para apagar Debian correctamente.
 El registro del proceso incluye PID, ruta y tiempo de creación para evitar confundir
 un PID reutilizado. Las operaciones de control usan bloqueos de archivo del núcleo, liberados al morir
-el proceso. El antiguo directorio control.lock de 0.3.x ya no bloquea 0.4.1.
+el proceso. El antiguo directorio control.lock de 0.3.x ya no bloquea 0.5.0.
 
 `sync-kernel` descarga kernel/initramfs mientras Debian está encendido, verifica
 ambos y prepara su aplicación **después del apagado**. Windows mantiene abierto el
@@ -69,7 +70,7 @@ completar la sustitución; `stop` o el siguiente `start` aplican la actualizaci�
 pendiente con la VM apagada. No borres esos archivos para reparar una actualización
 sin revisar primero el error. No se incluye apagado forzado automático.
 
-## Terminal interactiva en 0.4.1
+## Terminal interactiva en 0.5.0
 
 El cliente activa la interpretación ANSI en las salidas de consola de Windows y
 restaura el modo original al salir. Conserva el protocolo de pegado delimitado
@@ -78,7 +79,7 @@ Lee el tamaño real de la consola y comunica los cambios de ventana al invitado.
 Se probaron colores, historial con flechas, pegado, Ctrl+C y cambio de 100×30 a 120×40.
 Al reemplazar el ejecutable, cierra y vuelve a abrir el panel para cargar la versión nueva.
 
-## Recuperación automática en 0.4.1
+## Recuperación automática en 0.5.0
 
 Por defecto se conserva solo la copia inicial al arrancar. La opción **9** permite
 activar o desactivar las copias periódicas y elegir de **1 a 10080 minutos**.
@@ -101,6 +102,10 @@ Herramientas: Go 1.27.1, Bun, curl, tar/xz, 7zip (`7z`), binutils (`objdump`), z
 bash scripts/build-windows.sh
 ```
 
+El ejecutable incluye `assets/icons/Voxy.ico`, incrustado con
+`go run github.com/akavel/rsrc@v0.10.2`. El acceso directo usa ese recurso del EXE.
+La consola puede seguir mostrando el icono de Windows Terminal según el anfitrión.
+
 La compilación usa `GOOS=windows GOARCH=amd64 CGO_ENABLED=0`; versiones Go fijadas
 en `windows/go.mod` y `go.sum`. El constructor descarga el instalador de QEMU
 publicado por Stefan Weil y enlazado desde [qemu.org](https://www.qemu.org/download/),
@@ -117,7 +122,7 @@ La imagen Debian se extrae de la versión fijada en `images/amd64.lock`; sus tre
 archivos tienen un manifiesto SHA-256 verificado durante `init`. El ZIP también
 incluye `SHA256SUMS`, avisos de licencia y referencias de fuentes/recetas.
 
-Para reconstruir, mueve primero `dist/windows-build` y el ZIP anterior. No se
+Para reconstruir, mueve primero `dist/windows-build-0.5.0` y el ZIP anterior. No se
 incluyen prefijos Wine, discos de prueba, claves ni credenciales dentro del paquete.
 
 ## Pruebas de desarrollo
