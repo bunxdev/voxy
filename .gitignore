@@ -9,3 +9,5 @@ dist/
 
 /scripts/icons/node_modules/
 /windows/rsrc_windows_amd64.syso
+
+/bin/voxy-ports

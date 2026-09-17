@@ -81,3 +81,12 @@ instalación Docker/Lupa, suspensión y recuperación siguen pendientes.
 Opción 5 del panel, o `voxy ports add tcp 33033 33033 0.0.0.0`.
 El paquete incluye `lib/ports.sh` y `lib/ports.awk` y usa Bash/awk del sistema.
 [Guía de TCP/UDP, rangos, Tailscale y firewall](../../docs/PORTS.md).
+
+## Modo automático 0.7.0
+
+El DMG incluye `bin/voxy-ports`, compilado desde `windows/cmd/voxy-ports` con Go.
+`build-dmg.sh` lo compila nativamente o acepta `VOXY_PORTS_HELPER` apuntando al
+binario de la arquitectura correcta compilado del mismo árbol de fuentes.
+Para usar el launcher desde fuentes, ejecuta `scripts/build-ports-helper.sh`.
+`ports auto on [IPv4]` y `ports auto off` se aplican sin reiniciar la VM.
+Consulta [PORTS.md](../../docs/PORTS.md) para exclusiones, conflictos y firewall.

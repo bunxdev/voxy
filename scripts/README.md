@@ -99,3 +99,13 @@ no sustituyen la validación WHPX, permisos y seguridad en Windows real.
   Compilar con `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o probe-amd64
   scripts/ports-probe.go` (usar `arm64` para M1). Servir el binario desde una URL
   accesible a la VM y pasarla al script. Solo las VM de prueba instalan curl si falta.
+
+### Puertos automáticos (0.7.0)
+
+`build-ports-helper.sh` compila el controlador para instalaciones macOS/Linux
+que usan el launcher desde fuentes; los paquetes ya lo incluyen.
+`test-auto-ports-macos.sh RUTA_LAUNCHER URL_PROBE` y
+`test-auto-ports-windows.ps1 -Exe RUTA_EXE -ProbeURL URL_PROBE` crean una VM
+separada y prueban detección TCP/UDP, activación/desactivación en vivo, retirada,
+reinicio y conservación de una regla manual. Compila el servidor de prueba
+`scripts/ports-probe.go` para Linux y la arquitectura del invitado.

@@ -166,3 +166,10 @@ las operaciones propias del launcher siguen usando las API Unicode de Go/Windows
 Opción 10 del panel, o `Voxy.exe ports add tcp 33033 33033 0.0.0.0`.
 Configuración por VM, conservada entre actualizaciones. Se aplica al apagar e
 iniciar Debian. [Guía de TCP/UDP, rangos, Tailscale y firewall](../../docs/PORTS.md).
+
+## Modo automático 0.7.0
+
+`Voxy.exe ports auto on [IPv4]` y `ports auto off` controlan la detección en vivo.
+El proceso `ports-worker` usa un bloqueo propio y un canal QMP separado de las
+copias de recuperación. La configuración persiste en `ports-auto.conf`.
+Consulta [PORTS.md](../../docs/PORTS.md) para exclusiones, conflictos y firewall.

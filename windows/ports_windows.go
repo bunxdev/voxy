@@ -144,8 +144,14 @@ func (a *app) ports(args []string) error {
 			fmt.Println("Activos en la VM actual:")
 			printPorts(r.Ports)
 		}
+		if err := a.printAutoPorts(alive, r); err != nil {
+			return err
+		}
 		fmt.Println("Archivo:", a.path("ports.conf"))
 		return nil
+	}
+	if args[0] == "auto" {
+		return a.autoPortsConfig(args[1:])
 	}
 	var rules []portRule
 	if args[0] != "clear" {
@@ -223,7 +229,7 @@ func (a *app) ports(args []string) error {
 	return nil
 }
 func portsUsage() error {
-	return errors.New("Uso: ports list | add tcp|udp HOST[-FIN] DEBIAN[-FIN] [IPv4] | remove tcp|udp HOST[-FIN] [IPv4] | clear. IPv4 por defecto: 127.0.0.1; 0.0.0.0: todas las interfaces")
+	return errors.New("Uso: ports list | add tcp|udp HOST[-FIN] DEBIAN[-FIN] [IPv4] | remove tcp|udp HOST[-FIN] [IPv4] | clear | auto on [IPv4] | auto off. IPv4 por defecto: 127.0.0.1; 0.0.0.0: todas las interfaces")
 }
 func (a *app) configurePorts(reader *bufio.Reader) error {
 	if err := a.ports([]string{"list"}); err != nil {

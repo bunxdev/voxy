@@ -8,13 +8,27 @@ ports_print() {
   awk 'NF==4 {printf "  %s %s:%s -> Debian:%s\n",$1,$2,$3,$4; n++} END {if(!n) print "  (ninguno)"}'
 }
 ports_usage() {
-  echo 'Uso: ports list | add tcp|udp HOST[-FIN] DEBIAN[-FIN] [IPv4] | remove tcp|udp HOST[-FIN] [IPv4] | clear'
-  echo 'IPv4 por defecto: 127.0.0.1; 0.0.0.0: todas las interfaces. Máximo 256 puertos.'
+  echo 'Uso: ports list | add tcp|udp HOST[-FIN] DEBIAN[-FIN] [IPv4] | remove tcp|udp HOST[-FIN] [IPv4] | clear | auto on [IPv4] | auto off'
+  echo 'IPv4 por defecto: 127.0.0.1; 0.0.0.0: todas las interfaces. Máximo 256 reglas manuales.'
 }
 ports_command() {
   local action=${1:-list} rules file tmp protocol host_range guest_range ip
   [[ $# = 0 ]] || shift
   case "$action" in
+    auto)
+      local address=off
+      if [[ $# = 1 && "$1" = off ]]; then :
+      elif [[ ( $# = 1 || $# = 2 ) && "$1" = on ]]; then
+        address=${2:-127.0.0.1}
+        "$ROOT/bin/voxy-ports" validate "$address" || return
+      else ports_usage; return 1; fi
+      tmp=$(mktemp "$STATE/.ports-auto.XXXXXX") || return
+      printf '%s\n' "$address" > "$tmp"
+      chmod 600 "$tmp"
+      mv -f "$tmp" "$STATE/ports-auto.conf"
+      echo "Automático: $address. Se aplica en unos segundos si Debian está encendido."
+      ports_worker_start
+      return;;
     list)
       [[ $# = 0 ]] || { ports_usage; return 1; }
       rules=$(ports_read) || return
@@ -24,6 +38,7 @@ ports_command() {
         echo 'Activos en la VM actual:'
         if [[ -f "$STATE/ports.active" ]]; then ports_print < "$STATE/ports.active"; else printf '\n' | ports_print; fi
       fi
+      if [[ -x "$ROOT/bin/voxy-ports" ]]; then "$ROOT/bin/voxy-ports" status "$STATE"; fi
       echo "Archivo: $STATE/ports.conf"
       return;;
     menu)
@@ -62,4 +77,14 @@ ports_netdev() {
     [[ -n "$protocol" ]] || continue
     NETDEV="$NETDEV,hostfwd=$protocol:$ip:$host-:$guest"
   done <<< "$rules"
+}
+
+ports_worker_start() {
+  running || return 0
+  if [[ ! -x "$ROOT/bin/voxy-ports" ]]; then
+    [[ ! -f "$STATE/ports-auto.conf" ]] || { echo 'Falta bin/voxy-ports; compila el helper.' >&2; return 1; }
+    return 0
+  fi
+  # The helper owns an OS lock and releases it even after a crash.
+  nohup "$ROOT/bin/voxy-ports" "$STATE" "$ROOT/voxy" </dev/null >>"$STATE/ports-worker.log" 2>&1 &
 }

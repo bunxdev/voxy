@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 type app struct {
 	noAutoBackup       bool
@@ -267,6 +267,9 @@ func (a *app) start() error {
 	}
 	if alive {
 		fmt.Println("Voxy ya está encendido")
+		if e := a.startPortsWorker(); e != nil {
+			return e
+		}
 		return a.startBackupWorker()
 	}
 	rules, e := a.loadPorts()
@@ -299,6 +302,7 @@ func (a *app) start() error {
 		return fmt.Errorf("El disco requiere revisión; no se modifica automáticamente. Usa backups / restore si necesitas recuperar: %w", e)
 	}
 	_ = os.Remove(a.path("qmp.sock"))
+	_ = os.Remove(a.path("ports.sock"))
 	signer, e := a.key()
 	if e != nil {
 		return e
@@ -311,7 +315,7 @@ func (a *app) start() error {
 	}
 	// CreateProcessW sets a Unicode working directory. Relative ASCII filenames
 	// avoid this QEMU build's narrow Win32 file-path conversion for accented names.
-	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap,cache=writeback", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", portNetdev(a.port, rules), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-qmp", "unix:qmp.sock,server=on,wait=off", "-serial", "file:serial.log"}
+	args := []string{"-name", "voxy-amd64", "-L", "firmware", "-machine", "q35", "-accel", accel, "-m", strconv.Itoa(a.ram), "-smp", strconv.Itoa(a.cpus), "-kernel", "kernel", "-initrd", "initramfs", "-append", "console=ttyS0 root=/dev/vda rootfstype=ext4 rw quiet", "-drive", "file=disk.qcow2,format=qcow2,if=none,id=rootdisk,discard=unmap,cache=writeback", "-device", "virtio-blk-pci,drive=rootdisk", "-device", "virtio-rng-pci", "-fw_cfg", "name=opt/vm/ssh-key,file=authorized_keys", "-netdev", portNetdev(a.port, rules), "-device", "virtio-net-pci,netdev=net,romfile=", "-display", "none", "-monitor", "none", "-qmp", "unix:qmp.sock,server=on,wait=off", "-qmp", "unix:ports.sock,server=on,wait=off", "-serial", "file:serial.log"}
 	if accel == "tcg" {
 		args = append(args, "-cpu", "max")
 	}
@@ -349,6 +353,9 @@ func (a *app) start() error {
 		return a.qemuError("QEMU terminó")
 	}
 	fmt.Printf("Voxy iniciado (%s), SSH 127.0.0.1:%d\n", accel, a.port)
+	if e := a.startPortsWorker(); e != nil {
+		return e
+	}
 	return a.startBackupWorker()
 }
 func (a *app) client() (*ssh.Client, error) {
@@ -770,6 +777,8 @@ func (a *app) dispatch(args []string) error {
 		return a.backup(false)
 	case "backups":
 		return a.listBackups()
+	case "ports-worker":
+		return a.portsWorker()
 	case "backup-worker":
 		return a.backupWorker()
 	case "restore":
