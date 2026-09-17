@@ -75,3 +75,9 @@ las protecciones del sistema en las Macs de prueba.
 Compatibilidad actual declarada: ARM64 macOS 15+, Intel macOS 13+. Solo se probaron
 las versiones concretas indicadas arriba. Actualización automática, GUI dedicada,
 instalación Docker/Lupa, suspensión y recuperación siguen pendientes.
+
+## Reenvío de puertos en 0.6.0
+
+Opción 5 del panel, o `voxy ports add tcp 33033 33033 0.0.0.0`.
+El paquete incluye `lib/ports.sh` y `lib/ports.awk` y usa Bash/awk del sistema.
+[Guía de TCP/UDP, rangos, Tailscale y firewall](../../docs/PORTS.md).

@@ -27,6 +27,9 @@ func durableJSON(path string, v any) error {
 	if e != nil {
 		return e
 	}
+	return durableBytes(path, b)
+}
+func durableBytes(path string, b []byte) error {
 	f, e := os.CreateTemp(filepath.Dir(path), ".commit-")
 	if e != nil {
 		return e

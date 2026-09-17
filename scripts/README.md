@@ -64,7 +64,7 @@ cambia su intérprete de construcción, habrá que revisar esos nombres de paque
 ## Construir instaladores DMG
 
 Para usuarios finales están disponibles los paquetes en
-[Releases](https://github.com/bunxdev/voxy/releases/tag/v0.5.0); incluyen QEMU y Debian.
+[Releases](https://github.com/bunxdev/voxy/releases/tag/v0.6.0); incluyen QEMU y Debian.
 Para generar y comprobar esos paquetes desde macOS, consulta
 [packaging/macos/README.md](../packaging/macos/README.md) y los scripts
 `build-dmg.sh` / `test-dmg.sh`.
@@ -84,3 +84,18 @@ no sustituyen la validación WHPX, permisos y seguridad en Windows real.
 - `test-windows-recovery.ps1 -Exe C:\Voxy\Voxy.exe`: pruebas de interrupción y
   recuperación; `-TestSchedule` activa expresamente el intervalo de 10 minutos
   dentro de su VM de prueba.
+
+## Pruebas de reenvío de puertos (0.6.0)
+
+- `test-ports.sh`: validación de reglas y persistencia sin arrancar una VM;
+  compatible con Bash 3.2 y awk de macOS.
+- `test-ports-macos.sh DMG URL_PROBE IP_TAILSCALE`: prueba el paquete firmado
+  en una VM nueva, usando SSH 22460, TCP 33460–33461 y 33463, UDP 33462.
+- `test-ports-windows.ps1 -Exe EXE -ProbeURL URL`: VM WHPX nueva; puertos
+  SSH 22460, TCP 33460–33461 y UDP 33462.
+- Ambos prueban HTTP, eco UDP, persistencia tras reinicio, configuración pendiente,
+  eliminación y recuperación tras un puerto ocupado. Apagan la VM de prueba al salir.
+- `ports-probe.go`: servidor de prueba Linux para HTTP 8080/8081 y eco UDP 8082.
+  Compilar con `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o probe-amd64
+  scripts/ports-probe.go` (usar `arm64` para M1). Servir el binario desde una URL
+  accesible a la VM y pasarla al script. Solo las VM de prueba instalan curl si falta.

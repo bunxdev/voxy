@@ -410,3 +410,40 @@ La interfaz sigue siendo un panel de terminal. Este cambio no añade GUI propia,
 notarización de Apple ni firma Authenticode. El icono de la ventana de terminal
 puede depender de Terminal/Windows Terminal. Las copias de recuperación siguen
 siendo una función del lanzador Windows; no se portaron a macOS en esta versión.
+
+## Voxy 0.6.0 — reenvío de puertos (2026-09-17)
+
+Se construyeron paquetes Windows x64, macOS Intel y macOS ARM64. La nueva
+función usa `hostfwd` TCP/UDP de QEMU y configuración persistente `ports.conf`.
+
+- Windows 10 Home 22H2 x64: pruebas unitarias ejecutadas en Windows real,
+  incluidas las de copias, recuperación, consola y las nuevas de puertos.
+  Después se corrigió la contención de `ports list` con el bloqueo de copias;
+  las pruebas de puertos y de lectura con el bloqueo adquirido pasaron de nuevo.
+- Mac M1/macOS 15.5 y Mac Intel/macOS 13.6.9: validación con el Bash 3.2 y awk
+  del sistema, DMG verificado, firma ad-hoc comprobada y VM nuevas desde el
+  paquete, sin herramientas de paquetes en PATH.
+- En los tres equipos: dos puertos TCP consecutivos mapeados a HTTP 8080/8081,
+  eco UDP, persistencia tras apagar/iniciar, reglas pendientes frente a activas,
+  eliminación aplicada tras reinicio y rechazo de un puerto ocupado. Tras
+  liberar el puerto, la misma VM volvió a arrancar correctamente.
+- En ambos Macs: escucha en su IP Tailscale y peticiones TCP y UDP exitosas
+  desde otro equipo de la tailnet usando la aplicación 0.6.0 instalada.
+- Windows instalado: la aplicación Bun existente en `/root/zz` respondió
+  HTTP 200 con `hola desde voxy` a través de la IP Tailscale del anfitrión,
+  comprobado desde otro equipo. Se configuraron reglas localhost y Tailscale
+  para TCP 33033 y una excepción de firewall limitada a ese puerto, IP local
+  y origen Tailscale. El launcher no crea esa excepción automáticamente.
+- Se conservaron los discos habituales, el disco Windows de 4 GiB y las
+  preferencias de copias iniciales sin copias periódicas. Las pruebas usaron
+  discos separados y apagaron sus VM al terminar.
+
+Pruebas reproducibles: `scripts/test-ports.sh`, `windows/ports_windows_test.go`,
+`scripts/test-ports-macos.sh`, `scripts/test-ports-windows.ps1` y el servidor de
+prueba `scripts/ports-probe.go`. Las pruebas de integración instalan curl solo
+si falta dentro de su VM separada.
+
+Límites: no se ha probado IPv6, cambios de puertos en caliente, todos los puertos
+simultáneos, otras versiones de Windows ni una instalación nueva con cuarentena
+macOS. El máximo de 256 asignaciones está validado por el parser; la integración
+real utilizó unos pocos puertos y no mide el rendimiento con 256 conexiones.

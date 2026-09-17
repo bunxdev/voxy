@@ -18,6 +18,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export VOXY_DATA_DIR="$WORK/Fresh Debian"
 export VOXY_SSH_PORT=22333
 for file in "$RES/bin/"* "$RES/lib/"*; do
+  case "$file" in *.sh|*.awk) continue;; esac
   if otool -L "$file" | tail -n +2 | grep -E '/opt/|/usr/local/'; then
     echo "External dependency in $file"; exit 1
   fi
