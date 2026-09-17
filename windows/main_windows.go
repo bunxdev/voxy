@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.4.0"
+const version = "0.4.1"
 
 type app struct {
 	noAutoBackup       bool
@@ -673,7 +673,14 @@ func (a *app) status() error {
 	if os.Getenv("VOXY_AUTO_BACKUP") == "0" {
 		fmt.Println("Copias automáticas desactivadas en esta sesión")
 	} else {
-		fmt.Println("Copias automáticas: cada 10 min con escrituras, 3 puntos locales (requiere arranque con 0.4.0)")
+		s, err := a.loadBackupSettings()
+		if err != nil {
+			fmt.Println("Configuración de copias inválida; solo copia inicial:", err)
+		} else if s.Periodic {
+			fmt.Printf("Copia inicial y copias periódicas cada %d min con escrituras; 3 puntos locales\n", s.Minutes)
+		} else {
+			fmt.Println("Copia inicial al arrancar; copias periódicas desactivadas; 3 puntos locales")
+		}
 	}
 	if b, e := os.ReadFile(a.path("backup-status.json")); e == nil {
 		var status backupStatus
@@ -764,7 +771,7 @@ func (a *app) menu() {
 	for {
 		fmt.Println()
 		_ = a.status()
-		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n6) Crear punto de recuperación\n7) Ver puntos de recuperación\n8) Restaurar un punto (VM apagada)\n> ")
+		fmt.Print("\n1) Iniciar Debian\n2) Terminal Debian\n3) Apagar\n4) Diagnóstico\n5) Cerrar panel (la VM sigue encendida)\n6) Crear punto de recuperación\n7) Ver puntos de recuperación\n8) Restaurar un punto (VM apagada)\n9) Configurar copias periódicas\n> ")
 		line, e := reader.ReadString('\n')
 		if e != nil {
 			return
@@ -791,6 +798,8 @@ func (a *app) menu() {
 			err = a.dispatch([]string{"backup"})
 		case "7":
 			err = a.listBackups()
+		case "9":
+			err = a.configureBackups(reader)
 		case "8":
 			_ = a.listBackups()
 			fmt.Print("ID a restaurar (Enter cancela): ")

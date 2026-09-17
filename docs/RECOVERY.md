@@ -1,4 +1,4 @@
-# Recuperación de Voxy en Windows (0.4.0)
+# Recuperación de Voxy en Windows (0.4.1)
 
 Voxy conserva puntos de recuperación locales del disco de Debian. Están activados
 por defecto en el launcher Windows x64; los launchers actuales de macOS y Linux
@@ -6,11 +6,17 @@ por defecto en el launcher Windows x64; los launchers actuales de macOS y Linux
 
 ## Uso
 
-1. Al actualizar desde 0.3.x, cierra los paneles antiguos. Apaga Debian desde el
-   menú y vuelve a iniciarlo con 0.4.0 para habilitar el canal de control nuevo.
-2. Se crea una primera copia cuando Debian responde por SSH. Después se comprueban
-   las escrituras cada **10 minutos**. Si el contador no cambió, se omite la copia.
+1. Al actualizar desde 0.3.x o 0.4.0, cierra los paneles antiguos. Apaga Debian desde el
+   menú y vuelve a iniciarlo con 0.4.1 para reemplazar el proceso de copias anterior.
+2. Se crea una primera copia cuando Debian responde por SSH. Por defecto no se repite.
+   La opción **9) Configurar copias periódicas** permite activarlas y elegir un
+   intervalo de **1 a 10080 minutos** (10 es solo el valor sugerido).
+   La elección se guarda en `backup-settings.json` dentro del directorio de datos.
+   El proceso vuelve a leerla cada 10 segundos, sin reiniciar Debian.
+   Desactivarlas mantiene la copia inicial y las copias manuales; una copia en curso
+   termina normalmente. Si el contador no cambió, se omite la copia periódica.
    Las escrituras del propio sistema también cuentan como actividad.
+   El intervalo se cuenta desde que termina el intento anterior.
 3. Se conservan los **tres últimos puntos completos**, cada uno independiente.
    La copia más antigua se elimina solamente después de verificar una nueva.
 4. Puedes cerrar el panel o desconectar SSH: QEMU y el proceso de copias continúan.
@@ -49,7 +55,9 @@ La transferencia se limita a 32 MiB/s. Se exige espacio libre equivalente al tam
 virtual del disco más 512 MiB antes de comenzar; si falta, se registra el error y
 se mantienen los puntos anteriores. Una copia puede tardar más de 10 minutos en
 discos grandes; nunca se ejecutan dos copias simultáneas. Hay un límite de 30 minutos
-por intento y reintento al minuto ante errores.
+por intento. Con copias periódicas activadas, el siguiente intento espera el
+intervalo elegido desde el fin del anterior. Si están desactivadas, un fallo de
+la copia inicial queda visible en el panel y se puede reintentar manualmente.
 
 La copia captura un instante del disco después de solicitar `sync` al invitado;
 las aplicaciones continúan funcionando. Es una copia con consistencia equivalente
@@ -84,7 +92,7 @@ Las copias manuales siguen disponibles.
 - QEMU y el proceso de copias se separan también del grupo de procesos de OpenSSH
   (`CREATE_BREAKAWAY_FROM_JOB`), además de desacoplarse de la consola.
 
-No ejecutes simultáneamente launchers 0.3.x y 0.4.0 sobre la misma VM: usan bloqueos
+No ejecutes simultáneamente launchers 0.3.x y 0.4.x sobre la misma VM: usan bloqueos
 distintos. Cierra los paneles anteriores al actualizar.
 
 ## Pruebas reproducibles
@@ -100,6 +108,16 @@ con puerto libre; nunca termina la VM habitual. Prueba cierre brusco de QEMU,
 restauración del marcador anterior, retención, interrupción de una copia y limpieza
 del temporal. `-TestSchedule` añade la espera real del siguiente intervalo de
 10 minutos. Conserva los datos de prueba y apaga la VM al terminar.
+
+Para comprobar la política predeterminada y los cambios desde el menú:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-windows-backup-settings.ps1 -Exe C:\Voxy\Voxy.exe
+```
+
+Esta prueba usa otra VM, espera más de 10 minutos para confirmar la ausencia de
+copias periódicas por defecto y luego prueba activación, cambio de intervalo,
+desactivación, reinicio y restauración.
 
 Pruebas Go adicionales: exclusión y liberación del bloqueo tras matar su proceso,
 rechazo de copia corrupta, restauración interrumpida, exclusión de copias incompletas

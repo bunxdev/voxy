@@ -17,7 +17,6 @@ import (
 	"time"
 )
 
-const backupInterval = 10 * time.Minute
 const backupRetention = 3
 
 var backupID = regexp.MustCompile(`^\d{8}T\d{6}\.\d{9}Z$`)
@@ -361,26 +360,20 @@ func (a *app) backupWorker() error {
 		return e
 	}
 	identity := r.Created
-	// First backup soon after SSH is ready, then every ten minutes; no console or network connection required.
+	// Always attempt an initial copy; periodic copies are opt-in.
 	if e = a.wait(); e != nil {
 		return e
 	}
-	next := time.Now()
+	var lastAttempt time.Time
 	for {
 		r, alive, e = a.running()
 		if e != nil || !alive || r.Created != identity {
 			return e
 		}
-		if !time.Now().Before(next) {
-			attempt := time.Now()
-			err := a.backup(true)
-			next = attempt.Add(backupInterval)
-			if next.Before(time.Now()) {
-				next = time.Now().Add(backupInterval)
-			}
-			if err != nil {
-				next = time.Now().Add(time.Minute)
-			}
+		s, settingsErr := a.loadBackupSettings()
+		if lastAttempt.IsZero() || (settingsErr == nil && backupDue(s, lastAttempt, time.Now())) {
+			_ = a.backup(true)
+			lastAttempt = time.Now()
 		}
 		time.Sleep(10 * time.Second)
 	}

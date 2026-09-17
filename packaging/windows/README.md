@@ -5,13 +5,13 @@ La entrega actual es un **ZIP portátil**, con `Voxy.exe`, QEMU, sus DLL y Debia
 Windows para procesos, permisos y detección de WHPX. El cliente SSH está integrado;
 no necesita Bash, PowerShell para operar ni OpenSSH instalado.
 
-**Objetivo:** Windows 10 2004+ / Windows 11 x64. La versión 0.4.0 está probada en Windows 10 Home 22H2, build 19045, con WHPX.
+**Objetivo:** Windows 10 2004+ / Windows 11 x64. La versión 0.4.1 está probada en Windows 10 Home 22H2, build 19045, con WHPX.
 La versión 0.3.0 también pasó pruebas con Wine 10 y TCG. Windows 11 sigue pendiente.
 Windows ARM64 queda fuera de esta entrega.
 
 ## Probar en Windows
 
-1. Descarga y extrae **todo** `Voxy-0.4.0-windows-x64.zip` en una carpeta local.
+1. Descarga y extrae **todo** `Voxy-0.4.1-windows-x64.zip` en una carpeta local.
 2. Abre `Voxy.exe`. El menú permite iniciar, entrar a Debian por SSH y apagar.
 3. Para aceleración de hardware, habilita **Plataforma de hipervisor de Windows**
    desde `optionalfeatures.exe` y reinicia si Windows lo solicita. También requiere
@@ -29,7 +29,8 @@ Los discos de prueba se conservan para diagnóstico; su ruta aparece en el regis
 Los binarios no tienen firma Authenticode de Voxy. SmartScreen puede mostrar una
 advertencia. El equipo probado tenía Defender activo y Tailscale; esto no sustituye
 una matriz de Firewall, VPN y coexistencia con WSL2/Hyper-V. Faltan instalación limpia,
-ciclo WHPX completo sin elevación, suspensión y recuperación.
+ciclo WHPX completo sin elevación y suspensión. La recuperación ante cierre brusco
+y copia interrumpida ya está probada; consulta [TESTING.md](../../TESTING.md).
 
 ## Datos y uso por terminal
 
@@ -59,7 +60,7 @@ SSH escucha solo en `127.0.0.1`. No hay API/CDP ni Docker/Lupa en esta base toda
 Cerrar el panel deja QEMU funcionando; usa `stop` para apagar Debian correctamente.
 El registro del proceso incluye PID, ruta y tiempo de creación para evitar confundir
 un PID reutilizado. Las operaciones de control usan bloqueos de archivo del núcleo, liberados al morir
-el proceso. El antiguo directorio control.lock de 0.3.x ya no bloquea 0.4.0.
+el proceso. El antiguo directorio control.lock de 0.3.x ya no bloquea 0.4.1.
 
 `sync-kernel` descarga kernel/initramfs mientras Debian está encendido, verifica
 ambos y prepara su aplicación **después del apagado**. Windows mantiene abierto el
@@ -68,7 +69,7 @@ completar la sustitución; `stop` o el siguiente `start` aplican la actualizaci�
 pendiente con la VM apagada. No borres esos archivos para reparar una actualización
 sin revisar primero el error. No se incluye apagado forzado automático.
 
-## Terminal interactiva en 0.4.0
+## Terminal interactiva en 0.4.1
 
 El cliente activa la interpretación ANSI en las salidas de consola de Windows y
 restaura el modo original al salir. Conserva el protocolo de pegado delimitado
@@ -77,10 +78,15 @@ Lee el tamaño real de la consola y comunica los cambios de ventana al invitado.
 Se probaron colores, historial con flechas, pegado, Ctrl+C y cambio de 100×30 a 120×40.
 Al reemplazar el ejecutable, cierra y vuelve a abrir el panel para cargar la versión nueva.
 
-## Recuperación automática en 0.4.0
+## Recuperación automática en 0.4.1
 
-Primera copia al arrancar y comprobación cada 10 minutos con escrituras; tres puntos
-independientes, verificados antes de rotar. El panel muestra el estado y permite
+Por defecto se conserva solo la copia inicial al arrancar. La opción **9** permite
+activar o desactivar las copias periódicas y elegir de **1 a 10080 minutos**.
+Los 10 minutos son un valor sugerido, no una tarea activa por defecto.
+La preferencia se guarda en `backup-settings.json` y se aplica sin reiniciar
+Debian; una copia en curso termina normalmente. El intervalo se cuenta desde
+el final del intento anterior y solo se copia si hubo escrituras. Se conservan
+tres puntos independientes, verificados antes de rotar. El panel muestra el estado y permite
 crear/listar/restaurar. La restauración exige VM apagada y conserva el disco anterior.
 Al actualizar desde 0.3.x, cierra paneles antiguos y apaga/inicia la VM para activar QMP.
 
@@ -130,7 +136,11 @@ PID reutilizado y validación de ambos archivos antes de aplicar un kernel nuevo
 Las pruebas de terminal verifican que las tuberías conservan los bytes y que una
 consola Windows real interpreta los códigos ANSI y restaura su modo. Las cinco
 pruebas nuevas de recuperación cubren bloqueos interrumpidos, corrupción, restauración
-reanudable, puntos incompletos y ausencia de escrituras; las doce pasan en Windows 10.
+reanudable, puntos incompletos y ausencia de escrituras. Las dos pruebas de
+configuración cubren valor predeterminado, persistencia, intervalos y entradas
+inválidas: **14 de 14 pruebas pasaron en Windows 10**.
+`scripts/test-windows-backup-settings.ps1` también pasó con WHPX: más de 10 minutos
+sin copias por defecto, cambios desde el menú, copia manual, reinicio y restauración.
 La prueba integral se ejecuta con el mismo `Voxy.exe` distribuido, mediante `test`.
 
 Referencias: [QEMU Windows](https://qemu.weilnetz.de/w64/),
