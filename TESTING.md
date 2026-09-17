@@ -447,3 +447,35 @@ Límites: no se ha probado IPv6, cambios de puertos en caliente, todos los puert
 simultáneos, otras versiones de Windows ni una instalación nueva con cuarentena
 macOS. El máximo de 256 asignaciones está validado por el parser; la integración
 real utilizó unos pocos puertos y no mide el rendimiento con 256 conexiones.
+
+## Voxy 0.7.0 — reenvío automático (2026-09-17)
+
+- Motor compartido: pruebas Go con detector de carreras; sockets IPv4 y doble
+  pila, exclusión de loopback/IPv6 exclusivo/SSH/DHCP, deduplicación, cambio de
+  interfaz, retirada, errores SSH, conflictos, reintentos y recuperación del
+  registro de reenvíos. El registro se escribe antes de publicar el puerto.
+- Windows real: suite completa de pruebas Go; configuración automática e IPv4
+  inválidas, y reproducción de un lector que deniega temporalmente reemplazar
+  el archivo de estado. La escritura reintenta sin perder el registro.
+- Mac Intel y M1 (HVF): TCP 8080/8081 y eco UDP 8082 detectados sin reglas,
+  on/off en caliente, retirada al detener el servicio, persistencia tras
+  reiniciar, conservación de reglas manuales, puerto ocupado y reintento,
+  recuperación tras terminar el controlador y cambio de localhost a Tailscale.
+- Windows (WHPX): mismo recorrido TCP/UDP, on/off, retirada y reinicio; prueba
+  adicional de prioridad manual, puerto ocupado, recuperación del controlador,
+  copia de recuperación mientras funciona el detector y cambio de interfaz.
+- Acceso TCP y UDP automático desde Linux a las tres máquinas por Tailscale.
+  Las reglas temporales de firewall de Windows se retiran al finalizar.
+- Las pruebas usan discos separados de las VM habituales. No se repite la suite
+  histórica completa de restauración de imágenes: sí sus pruebas unitarias y
+  una copia real concurrente en Windows.
+
+Scripts reproducibles: `scripts/test-auto-ports-macos.sh` y
+`scripts/test-auto-ports-windows.ps1`, con el servidor Linux compilado desde
+`scripts/ports-probe.go`. En Windows las peticiones HTTP desactivan keep-alive:
+retirar una escucha no garantiza terminar conexiones TCP ya establecidas.
+
+Hallazgos corregidos antes de publicar: sockets de doble pila omitidos por
+`ss -4`, monitor QMP todavía no listo tras CreateProcess, espera del bloqueo
+entre generaciones de VM y reemplazo temporalmente denegado del estado en
+Windows. QMP automático usa un canal separado del de copias de recuperación.

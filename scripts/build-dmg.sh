@@ -22,6 +22,15 @@ mkdir -p "$RES/bin" "$RES/lib" "$RES/images" "$RES/share/qemu" "$RES/licenses"
 iconutil -c icns "$ROOT/assets/icons/Voxy.iconset" -o "$RES/Voxy.icns"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile Voxy.icns' "$APP/Contents/Info.plist"
 cp "$ROOT/voxy" "$RES/voxy"
+cp "$ROOT/packaging/Go-LICENSE" "$RES/licenses/Go-LICENSE"
+# Build on the Mac, or supply a cross-built helper from this exact source tree.
+if [[ -n "${VOXY_PORTS_HELPER:-}" ]]; then
+  cp "$VOXY_PORTS_HELPER" "$RES/bin/voxy-ports"
+else
+  (cd "$ROOT/windows" && CGO_ENABLED=0 GOOS=darwin GOARCH="$ARCH" go build -trimpath -ldflags='-s -w' -o "$RES/bin/voxy-ports" ./cmd/voxy-ports)
+fi
+chmod +x "$RES/bin/voxy-ports"
+codesign --force --sign - "$RES/bin/voxy-ports"
 cp "$ROOT/lib/ports.sh" "$ROOT/lib/ports.awk" "$RES/lib/"
 cp "$ROOT/packaging/macos/Voxy.command" "$RES/"
 chmod +x "$RES/voxy" "$RES/Voxy.command"

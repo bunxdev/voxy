@@ -83,3 +83,9 @@ Sin IPv4 explicita escucha solo en 127.0.0.1.
 Configuracion persistente en ports.conf, junto al disco.
 TCP/UDP y rangos: hasta 256 asignaciones. Requiere permiso del firewall
 para acceso remoto. No modifica el firewall automaticamente.
+
+Puertos automaticos (0.7.0): desde la opcion 10 escribe auto on para localhost,
+auto on 0.0.0.0 para todas las interfaces o auto on IP para una IP concreta.
+auto off lo desactiva. list muestra los activos y conflictos. Se aplica en vivo.
+Viene desactivado y no modifica el firewall. Al actualizar desde 0.6.0, apaga e
+inicia Debian una vez. Despues detecta los servicios sin reiniciar.
