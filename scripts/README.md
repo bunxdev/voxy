@@ -64,7 +64,7 @@ cambia su intérprete de construcción, habrá que revisar esos nombres de paque
 ## Construir instaladores DMG
 
 Para usuarios finales están disponibles los paquetes en
-[Releases](https://github.com/bunxdev/voxy/releases/tag/v0.2.0); incluyen QEMU y Debian.
+[Releases](https://github.com/bunxdev/voxy/releases/tag/v0.5.0); incluyen QEMU y Debian.
 Para generar y comprobar esos paquetes desde macOS, consulta
 [packaging/macos/README.md](../packaging/macos/README.md) y los scripts
 `build-dmg.sh` / `test-dmg.sh`.

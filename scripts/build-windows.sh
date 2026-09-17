@@ -4,11 +4,12 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VERSION=$(sed -n 's/^const version = "\([^"]*\)"/\1/p' "$ROOT/windows/main_windows.go")
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid Windows launcher version'; exit 1; }
+[[ "$VERSION" = "$(cat "$ROOT/VERSION")" ]] || { echo 'VERSION and Windows launcher disagree'; exit 1; }
 ZIP_NAME="Voxy-$VERSION-windows-x64.zip"
 source "$ROOT/packaging/windows/qemu.lock"
 source "$ROOT/images/amd64.lock"
 CACHE="$ROOT/.cache/windows-builder"
-BUILD="$ROOT/dist/windows-build"
+BUILD="$ROOT/dist/windows-build-$VERSION"
 APP="$BUILD/Voxy"
 [[ ! -e "$BUILD" ]] || { echo "Move the previous build first: $BUILD"; exit 1; }
 [[ ! -e "$ROOT/dist/$ZIP_NAME" ]] || { echo 'Move the previous Windows ZIP first'; exit 1; }
@@ -28,7 +29,10 @@ for firmware in bios-256k.bin bios.bin kvmvapic.bin linuxboot_dma.bin vgabios-st
 done
 for file in kernel initramfs disk.qcow2; do cp "$EXTRACT/$IMAGE_DIRECTORY/$file" "$APP/image/"; done
 bun "$ROOT/scripts/image-manifest.ts" "$APP/image"
+(cd "$ROOT/windows" && go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico ../assets/icons/Voxy.ico -o rsrc_windows_amd64.syso)
 (cd "$ROOT/windows" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$APP/Voxy.exe" .)
+cp "$ROOT/assets/icons/Voxy.ico" "$APP/"
+cp "$ROOT/packaging/windows/Crear-acceso-directo.ps1" "$APP/"
 cp "$ROOT/packaging/windows/"*.cmd "$APP/"
 cp "$ROOT/packaging/windows/LEEME.txt" "$APP/"
 cp "$ROOT/packaging/windows/qemu.lock" "$ROOT/images/amd64.lock" "$APP/licenses/"

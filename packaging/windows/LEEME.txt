@@ -1,4 +1,4 @@
-VOXY 0.4.1 - WINDOWS X64 - VERSION EXPERIMENTAL
+VOXY 0.5.0 - WINDOWS X64 - VERSION EXPERIMENTAL
 
 1. Extrae TODO el ZIP en una carpeta local. No ejecutes Voxy dentro del ZIP.
 2. Abre Voxy.exe: el panel permite iniciar Debian, abrir su terminal y apagar.
@@ -53,13 +53,13 @@ TERMINAL 0.3.1: interpreta secuencias ANSI en la consola Windows, usa el tamano
 real de la ventana y lo sincroniza al redimensionar. Mantiene bracketed paste.
 Los codigos de control no deben aparecer como texto en la consola interactiva.
 
-RECUPERACION 0.4.1:
+RECUPERACION 0.5.0:
 Solo copia inicial al arrancar por defecto. Opcion 9: activar/desactivar copias
 periodicas y elegir intervalo (1 a 10080 minutos). Preferencia persistente. Conserva
 3 puntos completos de disco (sin RAM) en el directorio de datos, carpeta backups.
 El menu permite crear, ver y restaurar puntos. Restaurar requiere VM apagada y
 conserva el disco anterior en before-restore-FECHA. No se restaura automaticamente.
-Cierra los paneles de versiones anteriores y apaga/inicia Debian con 0.4.1 para
+Cierra los paneles de versiones anteriores y apaga/inicia Debian con 0.5.0 para
 activar esta funcion. VM y copias siguen funcionando al cerrar el panel o SSH.
 Tras reiniciar Windows, abre Voxy y elige Iniciar Debian.
 
@@ -68,3 +68,8 @@ de ultima copia. Se requiere espacio libre del tamano virtual del disco + 512 Mi
 Las copias son locales: no protegen de una averia fisica del disco del equipo.
 Comandos: Voxy.exe backup | backups | restore ID
 Detalles: https://github.com/bunxdev/voxy/blob/main/docs/RECOVERY.md
+
+ICONO Y ACCESO DIRECTO (0.5.0):
+Voxy.exe incluye el icono propio. Ejecuta Crear-acceso-directo.cmd una vez
+para crear Voxy en tu escritorio. Conserva la carpeta extraida en su ubicacion;
+si la mueves, recrea el acceso. El panel sigue siendo de consola.
