@@ -1,0 +1,3 @@
+
+# Preserve upstream notices verbatim and their recorded SHA256 checksums.
+packaging/gpu-licenses/** -text -whitespace
