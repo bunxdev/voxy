@@ -39,6 +39,7 @@ fi
 cp "${VOXY_GPU_BINARY:-$ROOT/bin/voxy-gpu}" "$RES/bin/voxy-gpu"
 chmod 755 "$RES/bin/voxy-gpu"
 codesign --force --sign - "$RES/bin/voxy-gpu"
+cp -R "$ROOT/packaging/gpu-licenses" "$RES/licenses/gpu"
 cp "$ROOT/packaging/macos/Voxy.command" "$RES/"
 chmod +x "$RES/voxy" "$RES/Voxy.command"
 cp "$ROOT/images/$ARCH.lock" "$RES/images/"

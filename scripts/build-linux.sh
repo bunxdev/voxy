@@ -26,7 +26,7 @@ cp "$ROOT/voxy" "$ROOT/VERSION" "$ROOT/README.md" "$ROOT/TESTING.md" "$package/"
 cp -R "$ROOT/lib" "$ROOT/docs" "$package/"
 cp "$ROOT/images/amd64.lock" "$ROOT/images/arm64.lock" "$package/images/"
 cp "$HELPER" "$package/bin/voxy-gpu"
-cp "$ROOT/scripts/build-gpu.sh" "$ROOT/scripts/build-linux.sh" "$package/scripts/"
+cp "$ROOT/scripts/build-gpu.sh" "$package/scripts/"
 mkdir -p "$package/gpu"
 cp "$ROOT/gpu/Cargo.toml" "$ROOT/gpu/Cargo.lock" "$ROOT/gpu/README.md" "$package/gpu/"
 cp -R "$ROOT/gpu/src" "$ROOT/gpu/tests" "$package/gpu/"
@@ -38,26 +38,8 @@ fi
 for notice in "$ROOT"/LICENSE* "$ROOT"/COPYING*; do
   [[ ! -f "$notice" ]] || cp "$notice" "$package/licenses/"
 done
-# Include the notices of locked Rust dependencies; no credentials/build outputs are copied.
-cargo metadata --locked --format-version 1 --filter-platform "$RUST_TARGET" --manifest-path "$ROOT/gpu/Cargo.toml" > "$stage/metadata.json"
-python3 - "$stage/metadata.json" "$package/licenses" <<'PY'
-import json, pathlib, shutil, sys
-metadata=json.loads(pathlib.Path(sys.argv[1]).read_text())
-out=pathlib.Path(sys.argv[2])/'rust'; out.mkdir()
-index=[]
-for item in sorted(metadata['packages'],key=lambda p:(p['name'],p['version'])):
-    if item['source'] is None:continue
-    root=pathlib.Path(item['manifest_path']).parent
-    dest=out/(item['name']+'-'+item['version']); dest.mkdir()
-    names=[]
-    candidates=list(root.iterdir())
-    if item.get('license_file'):candidates.append(root/item['license_file'])
-    for source in sorted(set(candidates)):
-        if source.is_file() and (source.name.upper().startswith(('LICENSE','COPYING','NOTICE')) or str(source)==str(root/(item.get('license_file') or ''))):
-            shutil.copyfile(source,dest/source.name);names.append(source.name)
-    index.append({'name':item['name'],'version':item['version'],'license':item.get('license'),'repository':item.get('repository'),'notices':names})
-(out/'rust-dependencies.json').write_text(json.dumps(index,indent=2,sort_keys=True)+'\n')
-PY
+# Include the same pinned dependency notices as the macOS and Nopal bundles.
+cp -R "$ROOT/packaging/gpu-licenses" "$package/licenses/gpu"
 GLIBC_MIN=$(readelf --version-info "$HELPER" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1 || true)
 [[ -n "$GLIBC_MIN" ]] || GLIBC_MIN='none recorded (inspect ELF dependencies)'
 {

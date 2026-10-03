@@ -62,18 +62,29 @@ with tempfile.TemporaryDirectory(prefix='voxy gpu tests ') as directory:
         assert status==200 and result['passed'],result
         assert result['adapter']['device_type'] in ('DiscreteGpu','IntegratedGpu')
         # Freeze the owned subprocess, not a shader/driver, to test cancellation safely.
-        active_result=[]
-        active=threading.Thread(target=lambda:active_result.append(request(port,token,method='POST',path='/v1/self-test')))
-        active.start(); worker_pid=None
-        for _ in range(200):
-            table=subprocess.check_output(['ps','-axo','pid=,ppid='],text=True)
-            children=[int(fields[0]) for line in table.splitlines() if len(fields:=line.split())==2 and int(fields[1])==proc.pid]
-            if children:
-                worker_pid=children[0]
-                try:os.kill(worker_pid,signal.SIGSTOP);break
-                except ProcessLookupError:worker_pid=None
-            time.sleep(.005)
-        assert worker_pid is not None,'could not observe owned worker'
+        worker_pid=None
+        for attempt in range(5):
+            active_result=[]
+            active=threading.Thread(target=lambda:active_result.append(request(port,token,method='POST',path='/v1/self-test')))
+            active.start()
+            for _ in range(200):
+                table=subprocess.check_output(['ps','-axo','pid=,ppid='],text=True)
+                children=[int(fields[0]) for line in table.splitlines() if len(fields:=line.split())==2 and int(fields[1])==proc.pid]
+                if children:
+                    candidate=children[0]
+                    try:
+                        os.kill(candidate,signal.SIGSTOP)
+                        state_result=subprocess.run(['ps','-p',str(candidate),'-o','stat='],capture_output=True,text=True)
+                        if 'T' in state_result.stdout:
+                            worker_pid=candidate;break
+                        os.kill(candidate,signal.SIGCONT)
+                    except ProcessLookupError:pass
+                if not active.is_alive():break
+                time.sleep(.005)
+            if worker_pid is not None:break
+            active.join(timeout=15)
+            assert not active.is_alive(),'completed worker request did not finish'
+        assert worker_pid is not None,'could not pause an owned worker before completion'
         assert request(port,token)[0]==200
         assert request(port,token,method='POST',path='/v1/self-test')[0]==429
         # A client holding a partial header must not prevent shutdown or cleanup.

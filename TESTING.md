@@ -479,3 +479,21 @@ Hallazgos corregidos antes de publicar: sockets de doble pila omitidos por
 `ss -4`, monitor QMP todavía no listo tras CreateProcess, espera del bloqueo
 entre generaciones de VM y reemplazo temporalmente denegado del estado en
 Windows. QMP automático usa un canal separado del de copias de recuperación.
+
+## GPU compartida 0.8.0 — 3 de octubre de 2026
+
+El worker real y el puente desde Debian se verificaron con estos adaptadores, sin sustitución por CPU:
+
+| Anfitrión | GPU / API | Resultado |
+| --- | --- | --- |
+| Linux x64, controlador NVIDIA 580.82.07 | GeForce GTX 1070 / Vulkan | PASS |
+| macOS 15.5, Mac mini M1 | Apple M1 / Metal | PASS |
+| macOS 13.6.9, MacBook Pro Intel | Iris Plus Graphics 645 / Metal | PASS |
+
+Las pruebas comprobaron vector de 4096 elementos, multiplicación matricial 32×32 y un shader independiente con 257 resultados comparados contra una referencia. Debian alcanzó el worker mediante el túnel SSH autenticado. En ambas Macs se verificaron además desactivación, eliminación de credenciales, apagado compartiendo GPU, reinicio sin acceso y ausencia final de procesos propios. Linux verificó también el rechazo de lavapipe al restringir el ICD sólo para el proceso de prueba.
+
+Los contratos HTTP cubren autenticación, Origin, cabeceras ambiguas, longitudes, límites, permisos privados, serialización, cancelación de un subprocess detenido con SIGSTOP, recolección del proceso, señales y desaparición del PID vigilado. No se ejecutaron shaders infinitos. El daemon conserva su sesión al terminar el launcher. Los contratos Bash funcionan con Bash 3.2 de macOS.
+
+Los DMG 0.8.0 de ambas arquitecturas pasaron `hdiutil verify`, `codesign --verify --deep --strict` y el self-test del helper firmado. La firma es ad-hoc; no acredita notarización ni una instalación con cuarentena en un Mac limpio.
+
+El soporte es una API WGSL de cómputo, no CUDA/PyTorch transparente ni passthrough PCI. Windows no incorpora este puente. Las pruebas de CI sin GPU real sólo acreditan compilación/validaciones: no sustituyen las pruebas anteriores.
