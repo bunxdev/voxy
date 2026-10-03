@@ -1,5 +1,8 @@
 # Voxy
 
+Cómputo GPU opcional en Linux NVIDIA y macOS Metal: [uso y límites del puente](docs/GPU.md).
+
+
 QEMU + Debian mínimo como base independiente para ejecutar Lupa y otras
 aplicaciones Linux. **La etapa actual no instala Docker ni Lupa en la VM.**
 

@@ -31,7 +31,14 @@ else
 fi
 chmod +x "$RES/bin/voxy-ports"
 codesign --force --sign - "$RES/bin/voxy-ports"
-cp "$ROOT/lib/ports.sh" "$ROOT/lib/ports.awk" "$RES/lib/"
+cp "$ROOT/lib/ports.sh" "$ROOT/lib/ports.awk" "$ROOT/lib/gpu.sh" "$ROOT/lib/gpu-client.sh" "$RES/lib/"
+# Supply a helper built from this tree, or build natively with Rust.
+if [[ -z "${VOXY_GPU_BINARY:-}" ]]; then
+  MACOSX_DEPLOYMENT_TARGET="$MIN_OS" "$ROOT/scripts/build-gpu.sh"
+fi
+cp "${VOXY_GPU_BINARY:-$ROOT/bin/voxy-gpu}" "$RES/bin/voxy-gpu"
+chmod 755 "$RES/bin/voxy-gpu"
+codesign --force --sign - "$RES/bin/voxy-gpu"
 cp "$ROOT/packaging/macos/Voxy.command" "$RES/"
 chmod +x "$RES/voxy" "$RES/Voxy.command"
 cp "$ROOT/images/$ARCH.lock" "$RES/images/"

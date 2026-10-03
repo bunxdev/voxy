@@ -11,3 +11,5 @@ dist/
 /windows/rsrc_windows_amd64.syso
 
 /bin/voxy-ports
+/bin/voxy-gpu
+/gpu/target/

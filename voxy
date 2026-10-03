@@ -22,6 +22,7 @@ case "$STATE" in *,*) echo 'La ruta de datos no puede contener comas (sintaxis Q
 source "$ROOT/images/$ARCH.lock"
 PORT=${VOXY_SSH_PORT:-22222}
 source "$ROOT/lib/ports.sh"
+source "$ROOT/lib/gpu.sh"
 RAM=${VOXY_RAM_MB:-512}
 CPUS=${VOXY_CPUS:-1}
 for value in "$PORT" "$RAM" "$CPUS"; do case "$value" in ''|*[!0-9]*) echo 'Puerto, RAM y CPU deben ser enteros positivos' >&2; exit 1;; esac; done
@@ -107,6 +108,7 @@ wait_ready() {
   echo 'Tiempo de espera de SSH agotado' >&2; return 1
 }
 stop() {
+  gpu_stop_service || return
   running || { echo 'Voxy apagado'; return; }
   ssh_vm 'systemctl --no-block --no-wall start poweroff.target' || return 1
   local i
@@ -163,14 +165,21 @@ test_vm() {
   echo "PASS: $OS $ARCH $(cat "$STATE/accelerator"); SSH, APT, disco y persistencia"
 }
 case "${1:-help}" in
+  gpu)
+    case "${2:-status}" in
+      enable|disable)
+        mkdir "$STATE/control.lock" 2>/dev/null || { echo 'Otra operación está activa' >&2; exit 1; }
+        trap 'rmdir "$STATE/control.lock"' EXIT;;
+    esac;;
   init|start|stop|resize|sync-kernel|test|ports)
     mkdir "$STATE/control.lock" 2>/dev/null || { echo "Otra operación está activa. Si terminó inesperadamente, revisa antes de retirar $STATE/control.lock" >&2; exit 1; }
     trap 'rmdir "$STATE/control.lock"' EXIT;;
 esac
 case "${1:-help}" in
+  gpu) shift; gpu_command "$@";;
   ports) shift; ports_command "$@";;
   init) init;; start) start;; wait) wait_ready;; stop) stop;;
   ssh) shift; ssh_vm "$@";; resize) shift; resize "$@";; sync-kernel) sync_kernel;; test) test_vm;;
   status) if running; then echo "Voxy $ARCH encendido ($(cat "$STATE/accelerator"))"; else echo "Voxy $ARCH apagado"; fi;;
-  *) echo 'Uso: ./voxy {init|start|wait|ssh [comando]|status|stop|resize TAMAÑO|sync-kernel|ports [operación]|test}';;
+  *) echo 'Uso: ./voxy {init|start|wait|ssh [comando]|status|stop|resize TAMAÑO|sync-kernel|ports [operación]|gpu [operación]|test}';;
 esac
