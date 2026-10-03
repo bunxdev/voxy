@@ -110,7 +110,7 @@ wait_ready() {
 stop() {
   gpu_stop_service || return
   running || { echo 'Voxy apagado'; return; }
-  ssh_vm 'systemctl --no-block --no-wall start poweroff.target' || return 1
+  ssh_vm 'rm -f /etc/voxy-gpu/token /etc/voxy-gpu/curl.conf /etc/voxy-gpu/url && systemctl --no-block --no-wall start poweroff.target' || return 1
   local i
   for ((i=0;i<120;i++)); do
     running || { echo 'Voxy apagado'; return; }
