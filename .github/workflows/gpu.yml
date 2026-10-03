@@ -14,7 +14,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --locked --manifest-path gpu/Cargo.toml
       - run: ./scripts/build-gpu.sh
-      - run: bash -n voxy lib/gpu.sh scripts/build-gpu.sh scripts/build-dmg.sh
+      - run: bash -n voxy lib/gpu.sh scripts/build-gpu.sh scripts/build-dmg.sh scripts/build-linux.sh
       - run: sh -n lib/gpu-client.sh
       - name: Detect hardware (availability is not guaranteed in CI)
         run: bin/voxy-gpu probe
@@ -22,4 +22,15 @@ jobs:
         with:
           name: voxy-gpu-${{ runner.os }}-${{ runner.arch }}
           path: bin/voxy-gpu
+          if-no-files-found: error
+      - name: Package Linux launcher and GPU helper
+        if: runner.os == 'Linux'
+        run: VOXY_GPU_BINARY="$PWD/bin/voxy-gpu" ./scripts/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: Voxy-linux-${{ runner.arch }}
+          path: |
+            dist/Voxy-*-linux-*.tar.gz
+            dist/Voxy-*-linux-*.tar.gz.sha256
           if-no-files-found: error
